@@ -6,13 +6,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="孕宝助手">
-<meta name="theme-color" content="#FDF2F4">
+<meta name="color-scheme" content="light">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤰</text></svg>">
 <title id="docTitle">孕宝助手 · 孕期 & 新生儿</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
+  color-scheme: light;
   --bg: #FFF9F5;
   --card: #FFFFFF;
   --primary: #E892A5;
@@ -485,25 +486,26 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 const STORAGE_KEY = 'pwa_mom_baby_data';
 
 function loadData(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if(raw) return JSON.parse(raw);
-  return {
+  const defaults = {
     appTitle: '孕宝助手',
     dueDate: null,
-    kickLog: [],        // [{date,startTime,endTime,episodes,clicks,duration,window}]
-    pregWeights: [],    // [{date, weight}]
-    appointments: [],   // [{name, date, done}]
-    feedSessions: [],   // [{side, start, end, duration}]
-    diapers: [],        // [{time, type}]
-    growth: [],         // [{date, weight, height}]
-    sleep: [],          // [{date, hours}]
-    vaccines: [],       // [{id, done}] — id references schedule
-    notes: [],          // [{time, text}]
-    checkupRecords: [], // [{date, item, image}]
-    hospitalBag: [],    // [{name, qty, price}]
+    kickLog: [],
+    pregWeights: [],
+    appointments: [],
+    feedSessions: [],
+    diapers: [],
+    growth: [],
+    sleep: [],
+    vaccines: [],
+    notes: [],
+    checkupRecords: [],
+    hospitalBag: [],
     feedState: { left: {running:false,start:null,elapsed:0}, right: {running:false,start:null,elapsed:0} },
     kickState: { episodes:0, clicks:0, start:null, lastKickTime:0, window:3 }
   };
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw) return Object.assign({}, defaults, JSON.parse(raw));
+  return defaults;
 }
 
 function saveData(data){
