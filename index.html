@@ -135,8 +135,8 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
   font-size:.6rem;font-weight:600;background:var(--border);color:var(--text-light);
   transition:all .2s;
 }
-.week-dot.past{background:var(--mint);color:#fff}
-.week-dot.current{background:var(--primary);color:#fff;box-shadow:0 0 0 3px var(--primary-light)}
+.week-dot.past{background:#43A047;color:#fff}
+.week-dot.current{background:#2E7D32;color:#fff;box-shadow:0 0 0 3px rgba(67,160,71,0.25)}
 .week-dot.future{background:var(--border);color:var(--text-light)}
 
 /* Kick Counter */
@@ -352,7 +352,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
       <input type="text" id="checkupItem" placeholder="项目名称（如B超、唐筛）" style="flex:2;min-width:140px">
     </div>
     <div class="row gap-8 mb-8">
-      <input type="file" id="checkupImage" accept="image/*" capture="environment" style="flex:2;font-size:.82rem;padding:8px">
+      <input type="file" id="checkupImage" accept="image/*" style="flex:2;font-size:.82rem;padding:8px">
       <button class="btn btn-primary btn-sm" onclick="addCheckupRecord()" style="flex:1">📝 保存</button>
     </div>
     <div id="checkupList"></div>
