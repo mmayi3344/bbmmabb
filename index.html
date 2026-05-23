@@ -224,6 +224,10 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 .btn-clear:hover{text-decoration:underline}
 .section-header{display:flex;justify-content:space-between;align-items:center}
 .section-header h2{margin-bottom:0!important}
+.checkup-thumb{width:60px;height:60px;border-radius:10px;object-fit:cover;cursor:pointer;border:1px solid var(--border);transition:transform .2s}
+.checkup-thumb:active{transform:scale(.92)}
+.checkup-record{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.checkup-record:last-child{border-bottom:none}
 
 /* Due date setup */
 .setup-card{text-align:center}
@@ -326,6 +330,19 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
     </div>
     <div id="aptList"></div>
   </div>
+
+  <div class="card" id="checkupCard">
+    <h2><span class="emoji">📋</span> 产检记录</h2>
+    <div class="row gap-8 mb-8" style="flex-wrap:wrap">
+      <input type="date" id="checkupDate" style="flex:1.5;min-width:140px">
+      <input type="text" id="checkupItem" placeholder="项目名称（如B超、唐筛）" style="flex:2;min-width:140px">
+    </div>
+    <div class="row gap-8 mb-8">
+      <input type="file" id="checkupImage" accept="image/*" capture="environment" style="flex:2;font-size:.82rem;padding:8px">
+      <button class="btn btn-primary btn-sm" onclick="addCheckupRecord()" style="flex:1">📝 保存</button>
+    </div>
+    <div id="checkupList"></div>
+  </div>
 </div>
 
 <!-- ========== 宝宝 ========== -->
@@ -406,6 +423,12 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
   <button class="tab" data-page="notes"><span class="icon">📝</span>笔记</button>
 </nav>
 
+<!-- Image viewer modal -->
+<div id="imageModal" onclick="closeModal()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:rgba(0,0,0,.88);justify-content:center;align-items:center;padding:20px">
+  <span style="position:fixed;top:20px;right:24px;color:#fff;font-size:1.8rem;cursor:pointer;z-index:1000" onclick="closeModal()">✕</span>
+  <img id="modalImage" style="max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain">
+</div>
+
 <script>
 // ==================== DATA ====================
 const STORAGE_KEY = 'pwa_mom_baby_data';
@@ -425,6 +448,7 @@ function loadData(){
     sleep: [],          // [{date, hours}]
     vaccines: [],       // [{id, done}] — id references schedule
     notes: [],          // [{time, text}]
+    checkupRecords: [], // [{date, item, image}]
     feedState: { left: {running:false,start:null,elapsed:0}, right: {running:false,start:null,elapsed:0} },
     kickState: { episodes:0, clicks:0, start:null, lastKickTime:0, window:3 }
   };
@@ -656,11 +680,11 @@ function clearAll(type){
   if(!confirm('确定要清空全部记录吗？此操作不可恢复。')) return;
   const keys = {
     pregWeights:'孕期体重', kickLog:'胎动', appointments:'产检',
-    feedSessions:'哺乳', diapers:'尿布', growth:'生长', sleep:'睡眠', notes:'笔记'
+    feedSessions:'哺乳', diapers:'尿布', growth:'生长', sleep:'睡眠', notes:'笔记', checkupRecords:'产检记录'
   };
   D[type] = [];
   saveData(D);
-  if(type==='pregWeights'||type==='kickLog'||type==='appointments') renderPregnancy();
+  if(type==='pregWeights'||type==='kickLog'||type==='appointments'||type==='checkupRecords') renderPregnancy();
   else if(type==='feedSessions'||type==='diapers'||type==='growth'||type==='sleep') renderBaby();
   else renderNotes();
 }
@@ -751,6 +775,53 @@ function toggleVaccine(id){
   }
   saveData(D);
   renderVaccine();
+}
+
+// ==================== CHECKUP RECORDS ====================
+function addCheckupRecord(){
+  const date = document.getElementById('checkupDate').value;
+  const item = document.getElementById('checkupItem').value.trim();
+  if(!date || !item) return;
+  const fileInput = document.getElementById('checkupImage');
+  const file = fileInput.files[0];
+  if(!file){
+    D.checkupRecords.unshift({date, item, image:null});
+    saveData(D);
+    document.getElementById('checkupItem').value = '';
+    fileInput.value = '';
+    renderPregnancy();
+    return;
+  }
+  if(file.size > 5 * 1024 * 1024){
+    alert('图片太大，请上传小于 5MB 的图片');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    D.checkupRecords.unshift({date, item, image:e.target.result});
+    if(D.checkupRecords.length > 50) D.checkupRecords.length = 50;
+    saveData(D);
+    document.getElementById('checkupItem').value = '';
+    fileInput.value = '';
+    renderPregnancy();
+  };
+  reader.readAsDataURL(file);
+}
+
+function deleteCheckupRecord(idx){
+  D.checkupRecords.splice(idx,1);
+  saveData(D);
+  renderPregnancy();
+}
+
+function openCheckupImage(src){
+  const modal = document.getElementById('imageModal');
+  document.getElementById('modalImage').src = src;
+  modal.style.display = 'flex';
+}
+
+function closeModal(){
+  document.getElementById('imageModal').style.display = 'none';
 }
 
 // ==================== RENDER ====================
@@ -859,6 +930,21 @@ function renderPregnancy(){
         '<span style="cursor:pointer;font-size:1.1rem" onclick="toggleApt('+i+')">'+(a.done?'✅':'⭕')+'</span>' +
         '<span style="'+(a.done?'text-decoration:line-through;color:var(--text-light)':'')+'">'+a.name+'</span>' +
         '</div><span><span class="log-time">'+a.date+'</span> <span style="cursor:pointer;font-size:.75rem;color:var(--danger);margin-left:8px" onclick="deleteApt('+i+')">✕</span></span></div>'
+      ).join('');
+  }
+
+  // Checkup records
+  const cl = document.getElementById('checkupList');
+  if(D.checkupRecords.length === 0){
+    cl.innerHTML = '<div class="empty">暂无记录 · 拍照保存您的产检报告</div>';
+  } else {
+    cl.innerHTML = '<div class="flex-between mb-8"><span class="text-sm">共 '+D.checkupRecords.length+' 条</span><button class="btn-clear" onclick="clearAll(\'checkupRecords\')">🗑 清空全部</button></div>' +
+      D.checkupRecords.map((r,i) =>
+        '<div class="checkup-record" style="position:relative">' +
+        (r.image ? '<img class="checkup-thumb" src="'+r.image+'" onclick="openCheckupImage(\''+r.image+'\')">' : '<div style="width:60px;height:60px;border-radius:10px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:1.3rem">📄</div>') +
+        '<div style="flex:1"><div class="fw-600">'+r.item+'</div><div class="text-sm">'+r.date+'</div></div>' +
+        '<span style="cursor:pointer;font-size:.75rem;color:var(--danger)" onclick="deleteCheckupRecord('+i+')">✕</span>' +
+        '</div>'
       ).join('');
   }
 }
@@ -1003,6 +1089,7 @@ if(D.dueDate){
   document.getElementById('dueDateInput').value = D.dueDate;
 }
 document.getElementById('growthDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('checkupDate').value = new Date().toISOString().split('T')[0];
 
 // Custom title
 if(D.appTitle){
