@@ -222,7 +222,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 .badge-gold{background:#FEF6E6;color:#C49A3C}
 
 /* Baby size visual */
-.size-visual{text-align:center;font-size:3rem;margin:12px 0}
+.checkup-interval{text-align:center;margin:12px 0}
 
 .empty{text-align:center;padding:30px 16px;color:var(--text-light);font-size:.85rem}
 .btn-clear{
@@ -272,8 +272,11 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
         <span class="badge badge-pink" id="weekBadge">孕 -- 周</span>
         <span class="badge badge-mint" id="trimesterBadge">--</span>
       </div>
-      <div class="size-visual" id="babySize">👶</div>
-      <div class="text-sm" id="babySizeText"></div>
+      <div class="checkup-interval" id="checkupInterval">
+        <div class="text-sm" id="checkupIntervalLabel">距离上次产检</div>
+        <div class="countdown-num" style="font-size:2rem" id="checkupIntervalDays">-- 天</div>
+        <div class="text-sm" id="checkupIntervalItem" style="margin-top:4px"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -544,18 +547,19 @@ function getPregnancyInfo(){
   return {week, dayInWeek, daysLeft, trimester, dueDate: D.dueDate};
 }
 
-const babySizes = [
-  '', '🫘', '🫐', '🍇', '🫒', '🍋', '🥝', '🍑', '🍅', '🥑', '🥭',
-  '🍊', '🍎', '🍐', '🥚', '🍌', '🥕', '🌽', '🍠', '🥔', '🍈',
-  '🥥', '🍍', '🍞', '🧸', '🥒', '🎃', '🍉', '🎒', '👶','👶',
-  '👶','👶','👶','👶','👶','👶','👶','👶','👶'
-];
-const babySizeNames = [
-  '','芝麻','蓝莓','葡萄','橄榄','柠檬','猕猴桃','桃子','番茄','牛油果','芒果',
-  '橘子','苹果','梨','鸡蛋','香蕉','胡萝卜','玉米','红薯','土豆','哈密瓜',
-  '椰子','菠萝','面包','泰迪熊','黄瓜','南瓜','西瓜','小书包','宝宝来啦','宝宝来啦',
-  '宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦'
-];
+function getCheckupInterval(){
+  const records = D.checkupRecords || [];
+  if(records.length === 0) return {latest: null, days: 0};
+  // 找最新一次产检
+  let latest = records[0];
+  for(let i = 1; i < records.length; i++){
+    if(records[i].date > latest.date) latest = records[i];
+  }
+  const now = new Date();
+  const checkupDate = new Date(latest.date + 'T00:00:00');
+  const days = Math.floor((now - checkupDate) / (1000*60*60*24));
+  return {latest, days};
+}
 
 const weekTips = {
   1: '恭喜怀孕！虽然是第一周，但身体已经在为孕育宝宝做准备了。开始补充叶酸吧。',
@@ -1003,9 +1007,20 @@ function renderHome(){
   document.getElementById('weekBadge').textContent = '孕 ' + info.week + ' 周+' + info.dayInWeek + '天';
   document.getElementById('trimesterBadge').textContent = info.trimester;
 
-  const sizeIdx = Math.min(info.week, 40);
-  document.getElementById('babySize').textContent = babySizes[sizeIdx] || '👶';
-  document.getElementById('babySizeText').textContent = '宝宝现在大约 ' + (babySizeNames[sizeIdx] || '') + ' 那么大';
+  // Checkup interval
+  const interval = getCheckupInterval();
+  const ciDays = document.getElementById('checkupIntervalDays');
+  const ciLabel = document.getElementById('checkupIntervalLabel');
+  const ciItem = document.getElementById('checkupIntervalItem');
+  if(interval.latest){
+    ciDays.textContent = interval.days + ' 天';
+    ciLabel.textContent = '距离上次产检';
+    ciItem.textContent = interval.latest.date + (interval.latest.item ? ' · ' + interval.latest.item : '');
+  } else {
+    ciDays.textContent = '--';
+    ciLabel.textContent = '暂无产检记录';
+    ciItem.textContent = '去孕期页添加吧';
+  }
 
   // Week grid
   const grid = document.getElementById('weekGrid');
