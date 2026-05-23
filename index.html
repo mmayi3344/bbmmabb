@@ -353,7 +353,8 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
     </div>
     <div class="row gap-8 mb-8">
       <input type="file" id="checkupImage" accept="image/*" style="flex:2;font-size:.82rem;padding:8px">
-      <button class="btn btn-primary btn-sm" onclick="addCheckupRecord()" style="flex:1">📝 保存</button>
+      <button class="btn btn-primary btn-sm" id="checkupSaveBtn" onclick="addCheckupRecord()" style="flex:1">📝 保存</button>
+      <button class="btn btn-outline btn-sm" id="checkupCancelBtn" onclick="cancelCheckupEdit()" style="display:none;flex:0.8">取消</button>
     </div>
     <div id="checkupList"></div>
   </div>
@@ -837,18 +838,31 @@ function toggleVaccine(id){
 }
 
 // ==================== CHECKUP RECORDS ====================
+let _editingCheckupIdx = -1;
+
 function addCheckupRecord(){
   const date = document.getElementById('checkupDate').value;
   const item = document.getElementById('checkupItem').value.trim();
   if(!date || !item) return;
   const fileInput = document.getElementById('checkupImage');
   const file = fileInput.files[0];
-  if(!file){
-    D.checkupRecords.unshift({date, item, image:null});
+
+  function saveRecord(record){
+    if(_editingCheckupIdx >= 0){
+      D.checkupRecords[_editingCheckupIdx] = record;
+      cancelCheckupEdit();
+    } else {
+      D.checkupRecords.unshift(record);
+      if(D.checkupRecords.length > 50) D.checkupRecords.length = 50;
+    }
     saveData(D);
     document.getElementById('checkupItem').value = '';
     fileInput.value = '';
     renderPregnancy();
+  }
+
+  if(!file){
+    saveRecord({date, item, image:(_editingCheckupIdx>=0?D.checkupRecords[_editingCheckupIdx].image:null)});
     return;
   }
   if(file.size > 5 * 1024 * 1024){
@@ -857,14 +871,29 @@ function addCheckupRecord(){
   }
   const reader = new FileReader();
   reader.onload = function(e){
-    D.checkupRecords.unshift({date, item, image:e.target.result});
-    if(D.checkupRecords.length > 50) D.checkupRecords.length = 50;
-    saveData(D);
-    document.getElementById('checkupItem').value = '';
-    fileInput.value = '';
-    renderPregnancy();
+    saveRecord({date, item, image:e.target.result});
   };
   reader.readAsDataURL(file);
+}
+
+function editCheckupRecord(idx){
+  const r = D.checkupRecords[idx];
+  document.getElementById('checkupDate').value = r.date;
+  document.getElementById('checkupItem').value = r.item;
+  document.getElementById('checkupImage').value = '';
+  _editingCheckupIdx = idx;
+  document.getElementById('checkupSaveBtn').textContent = '✏️ 保存修改';
+  document.getElementById('checkupCancelBtn').style.display = '';
+  window.scrollTo({top: document.getElementById('checkupCard').offsetTop - 80, behavior: 'smooth'});
+}
+
+function cancelCheckupEdit(){
+  _editingCheckupIdx = -1;
+  document.getElementById('checkupDate').value = '';
+  document.getElementById('checkupItem').value = '';
+  document.getElementById('checkupImage').value = '';
+  document.getElementById('checkupSaveBtn').textContent = '📝 保存';
+  document.getElementById('checkupCancelBtn').style.display = 'none';
 }
 
 function deleteCheckupRecord(idx){
@@ -1101,7 +1130,8 @@ function renderPregnancy(){
         '<div class="checkup-record" style="position:relative">' +
         (r.image ? '<img class="checkup-thumb" src="'+r.image+'" onclick="openCheckupImage(\''+r.image+'\')">' : '<div style="width:60px;height:60px;border-radius:10px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:1.3rem">📄</div>') +
         '<div style="flex:1"><div class="fw-600">'+r.item+'</div><div class="text-sm">'+r.date+'</div></div>' +
-        '<span style="cursor:pointer;font-size:.75rem;color:var(--danger)" onclick="deleteCheckupRecord('+i+')">✕</span>' +
+        '<span><span style="cursor:pointer;font-size:.75rem;color:var(--primary);margin-right:8px" onclick="editCheckupRecord('+i+')">✏️</span>' +
+        '<span style="cursor:pointer;font-size:.75rem;color:var(--danger)" onclick="deleteCheckupRecord('+i+')">✕</span></span>' +
         '</div>'
       ).join('');
   }
