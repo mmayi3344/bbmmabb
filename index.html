@@ -72,6 +72,13 @@ header .sub{font-size:.8rem;color:var(--text-light);margin-top:2px}
 .tab .icon{font-size:1.3rem;line-height:1}
 .tab.active{color:var(--primary);font-weight:600}
 
+/* Sub Tabs */
+.sub-tab-bar{display:flex;gap:0;margin-bottom:14px;background:var(--border);border-radius:var(--radius-sm);padding:3px}
+.sub-tab{flex:1;text-align:center;padding:8px 4px;border:none;background:none;font-size:.82rem;color:var(--text-light);cursor:pointer;border-radius:10px;transition:all .2s;font-family:inherit;font-weight:500}
+.sub-tab.active{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.sub-page{display:none}
+.sub-page.active{display:block}
+
 /* Pages */
 .page{display:none;padding:8px 16px 20px;animation:fadeIn .25s ease}
 .page.active{display:block}
@@ -407,14 +414,43 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
   </div>
 </div>
 
-<!-- ========== 笔记 ========== -->
-<div class="page" id="page-notes">
-  <div class="card">
-    <h2><span class="emoji">📝</span> 孕期日记 / 育儿笔记</h2>
-    <textarea id="noteInput" rows="4" placeholder="记录此刻的心情、症状或宝宝的趣事..."></textarea>
-    <button class="btn btn-primary btn-block mt-8" onclick="addNote()">💾 保存笔记</button>
+<!-- ========== 其他 ========== -->
+<div class="page" id="page-other">
+  <!-- 子标签 -->
+  <div class="sub-tab-bar">
+    <button class="sub-tab active" data-sub="bag" onclick="switchSubTab('bag',this)">🎒 待产包</button>
+    <button class="sub-tab" data-sub="notes" onclick="switchSubTab('notes',this)">📝 笔记</button>
   </div>
-  <div id="noteList"></div>
+
+  <!-- 待产包 -->
+  <div class="sub-page active" id="sub-bag">
+    <div class="card">
+      <h2><span class="emoji">🎒</span> 待产包清单</h2>
+      <div class="row gap-8 mb-8" style="flex-wrap:wrap">
+        <input type="text" id="bagItemName" placeholder="项目名称" style="flex:2;min-width:120px">
+        <input type="number" id="bagItemQty" placeholder="数量" min="1" value="1" style="flex:1;min-width:60px">
+        <input type="number" id="bagItemPrice" placeholder="单价 (元)" step="0.01" style="flex:1.2;min-width:80px">
+      </div>
+      <button class="btn btn-primary btn-block mt-8" onclick="addBagItem()">➕ 添加项目</button>
+    </div>
+    <div id="bagList"></div>
+    <div class="card" id="bagTotalCard" style="display:none">
+      <div class="flex-between">
+        <span class="fw-600 text-sm">💰 待产包总价</span>
+        <span class="fw-700 text-primary" style="font-size:1.4rem" id="bagTotalPrice">¥0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 笔记 -->
+  <div class="sub-page" id="sub-notes">
+    <div class="card">
+      <h2><span class="emoji">📝</span> 孕期日记 / 育儿笔记</h2>
+      <textarea id="noteInput" rows="4" placeholder="记录此刻的心情、症状或宝宝的趣事..."></textarea>
+      <button class="btn btn-primary btn-block mt-8" onclick="addNote()">💾 保存笔记</button>
+    </div>
+    <div id="noteList"></div>
+  </div>
 </div>
 
 <!-- Tab Bar -->
@@ -423,7 +459,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
   <button class="tab" data-page="pregnancy"><span class="icon">🤰</span>孕期</button>
   <button class="tab" data-page="baby"><span class="icon">👶</span>宝宝</button>
   <button class="tab" data-page="vaccine"><span class="icon">💉</span>疫苗</button>
-  <button class="tab" data-page="notes"><span class="icon">📝</span>笔记</button>
+  <button class="tab" data-page="other"><span class="icon">📦</span>其他</button>
 </nav>
 
 <!-- Settings modal -->
@@ -464,6 +500,7 @@ function loadData(){
     vaccines: [],       // [{id, done}] — id references schedule
     notes: [],          // [{time, text}]
     checkupRecords: [], // [{date, item, image}]
+    hospitalBag: [],    // [{name, qty, price}]
     feedState: { left: {running:false,start:null,elapsed:0}, right: {running:false,start:null,elapsed:0} },
     kickState: { episodes:0, clicks:0, start:null, lastKickTime:0, window:3 }
   };
@@ -695,12 +732,13 @@ function clearAll(type){
   if(!confirm('确定要清空全部记录吗？此操作不可恢复。')) return;
   const keys = {
     pregWeights:'孕期体重', kickLog:'胎动', appointments:'产检',
-    feedSessions:'哺乳', diapers:'尿布', growth:'生长', sleep:'睡眠', notes:'笔记', checkupRecords:'产检记录'
+    feedSessions:'哺乳', diapers:'尿布', growth:'生长', sleep:'睡眠', notes:'笔记', checkupRecords:'产检记录', hospitalBag:'待产包'
   };
   D[type] = [];
   saveData(D);
   if(type==='pregWeights'||type==='kickLog'||type==='appointments'||type==='checkupRecords') renderPregnancy();
   else if(type==='feedSessions'||type==='diapers'||type==='growth'||type==='sleep') renderBaby();
+  else if(type==='hospitalBag') renderHospitalBag();
   else renderNotes();
 }
 function deletePregWeight(i){D.pregWeights.splice(i,1);saveData(D);renderPregnancy();}
@@ -839,6 +877,60 @@ function closeModal(){
   document.getElementById('imageModal').style.display = 'none';
 }
 
+// ==================== HOSPITAL BAG ====================
+function addBagItem(){
+  const name = document.getElementById('bagItemName').value.trim();
+  const qty = parseInt(document.getElementById('bagItemQty').value) || 1;
+  const price = parseFloat(document.getElementById('bagItemPrice').value) || 0;
+  if(!name) return;
+  D.hospitalBag.push({name, qty, price});
+  if(D.hospitalBag.length > 200) D.hospitalBag.length = 200;
+  saveData(D);
+  document.getElementById('bagItemName').value = '';
+  document.getElementById('bagItemQty').value = '1';
+  document.getElementById('bagItemPrice').value = '';
+  renderHospitalBag();
+}
+
+function deleteBagItem(idx){
+  D.hospitalBag.splice(idx,1);
+  saveData(D);
+  renderHospitalBag();
+}
+
+function renderHospitalBag(){
+  const div = document.getElementById('bagList');
+  const totalCard = document.getElementById('bagTotalCard');
+  const totalEl = document.getElementById('bagTotalPrice');
+  if(D.hospitalBag.length === 0){
+    div.innerHTML = '<div class="empty mt-12">🎒 待产包还是空的，开始添加物品吧</div>';
+    totalCard.style.display = 'none';
+    return;
+  }
+  let total = 0;
+  div.innerHTML = '<div class="flex-between mb-8"><span class="text-sm">共 '+D.hospitalBag.length+' 项</span><button class="btn-clear" onclick="clearAll(\'hospitalBag\')">🗑 清空全部</button></div>' +
+    D.hospitalBag.map((item,i) => {
+      const sub = (item.qty * item.price);
+      total += sub;
+      return '<div class="log-item" style="position:relative">'+
+        '<div><span class="fw-600">'+item.name+'</span><span class="text-sm" style="margin-left:8px">×'+item.qty+(item.price>0?' · ¥'+item.price.toFixed(2)+'/个':'')+'</span></div>'+
+        '<span><span class="fw-600 text-primary">¥'+sub.toFixed(2)+'</span>'+
+        '<span style="cursor:pointer;font-size:.75rem;color:var(--danger);margin-left:8px" onclick="deleteBagItem('+i+')">✕</span></span>'+
+        '</div>';
+    }).join('');
+  totalCard.style.display = '';
+  totalEl.textContent = '¥'+total.toFixed(2);
+}
+
+function switchSubTab(sub, el){
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sub-'+sub).classList.add('active');
+  if(sub === 'notes') renderNotes();
+  else renderHospitalBag();
+}
+
 // ==================== SETTINGS ====================
 function openSettings(){
   document.getElementById('settingsModal').style.display = 'flex';
@@ -847,8 +939,8 @@ function closeSettings(){
   document.getElementById('settingsModal').style.display = 'none';
 }
 function exportData(){
-  const data = JSON.stringify(localStorage.getItem('***') || '{}', null, 2);
-  const blob = new Blob([localStorage.getItem('***') || '{}'], {type:'application/json'});
+  const raw = localStorage.getItem(STORAGE_KEY) || '{}';
+  const blob = new Blob([raw], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = '孕宝助手备份_' + new Date().toISOString().split('T')[0] + '.json';
@@ -862,7 +954,7 @@ function importData(event){
   reader.onload = function(e){
     try{
       const data = JSON.parse(e.target.result);
-      localStorage.setItem('***', JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       D = loadData();
       closeSettings();
       renderAll();
@@ -879,6 +971,7 @@ function renderAll(){
   renderBaby();
   renderVaccine();
   renderNotes();
+  renderHospitalBag();
   // Restore running timers
   if(D.feedState.left.running) startFeedTimer('left');
   if(D.feedState.right.running) startFeedTimer('right');
@@ -1122,7 +1215,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if(tab.dataset.page === 'pregnancy') renderPregnancy();
     if(tab.dataset.page === 'baby') renderBaby();
     if(tab.dataset.page === 'vaccine') renderVaccine();
-    if(tab.dataset.page === 'notes') renderNotes();
+    if(tab.dataset.page === 'other') { renderNotes(); renderHospitalBag(); }
   });
 });
 
