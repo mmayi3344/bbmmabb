@@ -252,7 +252,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
     <div class="card text-center">
       <div class="countdown-label mb-8">👶 距离预产期还有</div>
       <div class="countdown-num" id="countdown">-- 天</div>
-      <div class="text-sm mt-8">预产期：<span id="dueDateShow" class="fw-600"></span></div>
+      <div class="text-sm mt-8">预产期：<span id="dueDateShow" class="fw-600"></span> <span style="cursor:pointer;font-size:.75rem;color:var(--primary);text-decoration:underline" onclick="editDueDate()">✏️ 修改</span></div>
       <div class="mt-12">
         <span class="badge badge-pink" id="weekBadge">孕 -- 周</span>
         <span class="badge badge-mint" id="trimesterBadge">--</span>
@@ -442,7 +442,13 @@ function setDueDate(){
   if(!val) return;
   D.dueDate = val;
   saveData(D);
+  document.getElementById('setupCard').style.display = 'none';
   renderAll();
+}
+
+function editDueDate(){
+  document.getElementById('setupCard').style.display = '';
+  if(D.dueDate) document.getElementById('dueDateInput').value = D.dueDate;
 }
 
 // ==================== WEEK INFO ====================
@@ -774,7 +780,7 @@ function renderHome(){
     return;
   }
 
-  setup.style.display = 'none';
+  display.style.display = '';
   display.style.display = '';
   sub.textContent = '孕 ' + info.week + '周+' + info.dayInWeek + '天 · ' + info.trimester;
 
