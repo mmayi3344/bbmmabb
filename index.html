@@ -27,8 +27,8 @@
   --border: #F0E6EB;
   --danger: #E89292;
   --shadow: 0 2px 12px rgba(74,53,71,0.06);
-  --radius: 18px;
-  --radius-sm: 12px;
+  --radius: 10px;
+  --radius-sm: 8px;
   --safe-bottom: env(safe-area-inset-bottom, 16px);
 }
 body{
@@ -75,7 +75,7 @@ header .sub{font-size:.8rem;color:var(--text-light);margin-top:2px}
 
 /* Sub Tabs */
 .sub-tab-bar{display:flex;gap:0;margin-bottom:14px;background:var(--border);border-radius:var(--radius-sm);padding:3px}
-.sub-tab{flex:1;text-align:center;padding:8px 4px;border:none;background:none;font-size:.82rem;color:var(--text-light);cursor:pointer;border-radius:10px;transition:all .2s;font-family:inherit;font-weight:500}
+.sub-tab{flex:1;text-align:center;padding:8px 4px;border:none;background:none;font-size:.82rem;color:var(--text-light);cursor:pointer;border-radius:8px;transition:all .2s;font-family:inherit;font-weight:500}
 .sub-tab.active{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .sub-page{display:none}
 .sub-page.active{display:block}
@@ -99,7 +99,7 @@ header .sub{font-size:.8rem;color:var(--text-light);margin-top:2px}
 /* Buttons */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  padding:10px 20px;border-radius:24px;border:none;
+  padding:10px 20px;border-radius:10px;border:none;
   font-size:.9rem;font-weight:600;cursor:pointer;
   transition:all .2s;
   font-family: inherit;
@@ -109,7 +109,7 @@ header .sub{font-size:.8rem;color:var(--text-light);margin-top:2px}
 .btn-outline{background:#fff;color:var(--primary);border:1.5px solid var(--primary)}
 .btn-outline:active{background:var(--primary-light)}
 .btn-block{width:100%}
-.btn-sm{padding:6px 14px;font-size:.8rem;border-radius:18px}
+.btn-sm{padding:6px 14px;font-size:.8rem;border-radius:8px}
 
 /* Input */
 input,textarea{
@@ -155,7 +155,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 .kick-timer{text-align:center;font-size:1.1rem;font-weight:600;color:var(--text-light);font-variant-numeric:tabular-nums;margin:4px 0}
 .window-selector{display:flex;gap:6px;justify-content:center;margin:8px 0}
 .window-opt{
-  padding:5px 14px;border-radius:14px;border:1.5px solid var(--border);
+  padding:5px 14px;border-radius:8px;border:1.5px solid var(--border);
   background:#fff;font-size:.75rem;cursor:pointer;font-family:inherit;
   color:var(--text-light);transition:all .2s;
 }
@@ -214,7 +214,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 .text-primary{color:var(--primary)}
 .fw-600{font-weight:600}
 .badge{
-  display:inline-block;padding:3px 10px;border-radius:12px;
+  display:inline-block;padding:3px 10px;border-radius:8px;
   font-size:.72rem;font-weight:600;
 }
 .badge-pink{background:var(--primary-light);color:var(--primary)}
@@ -232,7 +232,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 .btn-clear:hover{text-decoration:underline}
 .section-header{display:flex;justify-content:space-between;align-items:center}
 .section-header h2{margin-bottom:0!important}
-.checkup-thumb{width:60px;height:60px;border-radius:10px;object-fit:cover;cursor:pointer;border:1px solid var(--border);transition:transform .2s}
+.checkup-thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--border);transition:transform .2s}
 .checkup-thumb:active{transform:scale(.92)}
 .checkup-record{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
 .checkup-record:last-child{border-bottom:none}
@@ -482,7 +482,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 <!-- Image viewer modal -->
 <div id="imageModal" onclick="closeModal()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:rgba(0,0,0,.88);justify-content:center;align-items:center;padding:20px">
   <span style="position:fixed;top:20px;right:24px;color:#fff;font-size:1.8rem;cursor:pointer;z-index:1000" onclick="closeModal()">✕</span>
-  <img id="modalImage" style="max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain">
+  <img id="modalImage" style="max-width:100%;max-height:90vh;border-radius:8px;object-fit:contain">
 </div>
 
 <script>
@@ -1128,7 +1128,7 @@ function renderPregnancy(){
     cl.innerHTML = '<div class="flex-between mb-8"><span class="text-sm">共 '+D.checkupRecords.length+' 条</span><button class="btn-clear" onclick="clearAll(\'checkupRecords\')">🗑 清空全部</button></div>' +
       D.checkupRecords.map((r,i) =>
         '<div class="checkup-record" style="position:relative">' +
-        (r.image ? '<img class="checkup-thumb" src="'+r.image+'" onclick="openCheckupImage(\''+r.image+'\')">' : '<div style="width:60px;height:60px;border-radius:10px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:1.3rem">📄</div>') +
+        (r.image ? '<img class="checkup-thumb" src="'+r.image+'" onclick="openCheckupImage(\''+r.image+'\')">' : '<div style="width:60px;height:60px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:1.3rem">📄</div>') +
         '<div style="flex:1"><div class="fw-600">'+r.item+'</div><div class="text-sm">'+r.date+'</div></div>' +
         '<span><span style="cursor:pointer;font-size:.75rem;color:var(--primary);margin-right:8px" onclick="editCheckupRecord('+i+')">✏️</span>' +
         '<span style="cursor:pointer;font-size:.75rem;color:var(--danger)" onclick="deleteCheckupRecord('+i+')">✕</span></span>' +
