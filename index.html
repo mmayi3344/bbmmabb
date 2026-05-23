@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="孕宝助手">
+<meta name="theme-color" content="#FDF2F4">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤰</text></svg>">
+<title>孕宝助手 · 孕期 & 新生儿</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg: #FFF9F5;
+  --card: #FFFFFF;
+  --primary: #E892A5;
+  --primary-light: #F9E4E9;
+  --rose: #F0A0B8;
+  --lavender: #C9B8E8;
+  --mint: #A8D5C8;
+  --gold: #F0CD8A;
+  --text: #4A3547;
+  --text-light: #8B7B87;
+  --border: #F0E6EB;
+  --danger: #E89292;
+  --shadow: 0 2px 12px rgba(74,53,71,0.06);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --safe-bottom: env(safe-area-inset-bottom, 16px);
+}
+body{
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: calc(80px + var(--safe-bottom));
+  -webkit-font-smoothing: antialiased;
+}
+header{
+  padding: 16px 20px 8px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+header h1{font-size:1.3rem;font-weight:700;color:var(--primary)}
+header .sub{font-size:.8rem;color:var(--text-light);margin-top:2px}
+
+/* Tabs */
+.tab-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--card);
+  display:flex;
+  border-top:1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+  z-index:100;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
+}
+.tab{
+  flex:1;text-align:center;padding:10px 4px;
+  border:none;background:none;
+  font-size:.68rem;color:var(--text-light);
+  cursor:pointer;
+  transition:color .2s;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.tab .icon{font-size:1.3rem;line-height:1}
+.tab.active{color:var(--primary);font-weight:600}
+
+/* Pages */
+.page{display:none;padding:8px 16px 20px;animation:fadeIn .25s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Cards */
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:18px 16px;
+  margin-bottom:14px;
+  box-shadow:var(--shadow);
+}
+.card h2{font-size:1rem;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 .emoji{font-size:1.2rem}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 20px;border-radius:24px;border:none;
+  font-size:.9rem;font-weight:600;cursor:pointer;
+  transition:all .2s;
+  font-family: inherit;
+}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:active{background:#d47d92;transform:scale(.97)}
+.btn-outline{background:#fff;color:var(--primary);border:1.5px solid var(--primary)}
+.btn-outline:active{background:var(--primary-light)}
+.btn-block{width:100%}
+.btn-sm{padding:6px 14px;font-size:.8rem;border-radius:18px}
+
+/* Input */
+input,textarea{
+  width:100%;padding:10px 14px;border-radius:var(--radius-sm);
+  border:1.5px solid var(--border);font-size:.88rem;font-family:inherit;
+  background:var(--bg);color:var(--text);
+  transition:border-color .2s;
+}
+input:focus,textarea:focus{outline:none;border-color:var(--primary)}
+label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px}
+
+/* Countdown */
+.countdown-num{
+  font-size:2.6rem;font-weight:800;color:var(--primary);
+  line-height:1;letter-spacing:-1px;
+}
+.countdown-label{font-size:.78rem;color:var(--text-light)}
+
+/* Week grid */
+.week-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.week-dot{
+  aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.6rem;font-weight:600;background:var(--border);color:var(--text-light);
+  transition:all .2s;
+}
+.week-dot.past{background:var(--mint);color:#fff}
+.week-dot.current{background:var(--primary);color:#fff;box-shadow:0 0 0 3px var(--primary-light)}
+.week-dot.future{background:var(--border);color:var(--text-light)}
+
+/* Kick Counter */
+.kick-btn{
+  width:100%;padding:28px;border-radius:var(--radius);border:none;
+  background:linear-gradient(135deg,var(--primary-light),var(--rose));
+  color:var(--text);font-size:1rem;font-weight:700;cursor:pointer;
+  transition:all .15s;
+}
+.kick-btn:active{transform:scale(.96);opacity:.85}
+.kick-count{font-size:3rem;font-weight:800;color:var(--primary);text-align:center}
+.kick-timer{text-align:center;font-size:1.2rem;font-weight:600;color:var(--text-light);font-variant-numeric:tabular-nums}
+
+/* Feeding */
+.feed-side{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.feed-btn{
+  padding:20px;border-radius:var(--radius-sm);border:2px dashed var(--border);
+  background:var(--bg);text-align:center;cursor:pointer;transition:all .2s;
+  font-family:inherit;
+}
+.feed-btn:active{background:var(--primary-light);border-color:var(--primary)}
+.feed-btn.running{background:var(--primary-light);border-color:var(--primary);border-style:solid}
+.feed-time{font-size:1.6rem;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.feed-label{font-size:.78rem;color:var(--text-light);margin-top:4px}
+
+/* Log list */
+.log-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--border);
+  font-size:.85rem;
+}
+.log-item:last-child{border-bottom:none}
+.log-time{color:var(--text-light);font-size:.75rem}
+
+/* Vaccination */
+.vac-item{
+  display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);
+}
+.vac-item:last-child{border-bottom:none}
+.vac-age{font-size:.75rem;color:var(--text-light);min-width:60px;font-weight:600}
+.vac-name{flex:1;font-size:.88rem;font-weight:500}
+.vac-check{
+  width:24px;height:24px;border-radius:50%;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;cursor:pointer;transition:all .2s;
+  flex-shrink:0;
+}
+.vac-check.done{background:var(--mint);border-color:var(--mint);color:#fff}
+
+/* Growth */
+.growth-row{display:flex;gap:10px;margin-bottom:10px}
+.growth-row input{flex:1}
+.growth-record{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem}
+
+/* Misc */
+.row{display:flex;gap:10px;align-items:center}
+.flex-between{display:flex;justify-content:space-between;align-items:center}
+.text-center{text-align:center}
+.mt-8{margin-top:8px}
+.mt-12{margin-top:12px}
+.mb-8{margin-bottom:8px}
+.gap-8{gap:8px}
+.text-sm{font-size:.82rem;color:var(--text-light)}
+.text-primary{color:var(--primary)}
+.fw-600{font-weight:600}
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:12px;
+  font-size:.72rem;font-weight:600;
+}
+.badge-pink{background:var(--primary-light);color:var(--primary)}
+.badge-mint{background:#E3F4EE;color:var(--mint)}
+.badge-gold{background:#FEF6E6;color:#C49A3C}
+
+/* Baby size visual */
+.size-visual{text-align:center;font-size:3rem;margin:12px 0}
+
+.empty{text-align:center;padding:30px 16px;color:var(--text-light);font-size:.85rem}
+
+/* Due date setup */
+.setup-card{text-align:center}
+.setup-card input{margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🤰 孕宝助手</h1>
+  <div class="sub" id="headerSub">设置预产期以开始</div>
+</header>
+
+<!-- ========== 首页 ========== -->
+<div class="page active" id="page-home">
+  <!-- 预产期设置 -->
+  <div class="card setup-card" id="setupCard">
+    <h2><span class="emoji">📅</span> 设置预产期</h2>
+    <label>你的预产期</label>
+    <input type="date" id="dueDateInput">
+    <button class="btn btn-primary btn-block mt-8" onclick="setDueDate()">💾 保存</button>
+  </div>
+
+  <!-- 显示区域 -->
+  <div id="homeDisplay" style="display:none">
+    <div class="card text-center">
+      <div class="countdown-label mb-8">👶 距离预产期还有</div>
+      <div class="countdown-num" id="countdown">-- 天</div>
+      <div class="text-sm mt-8">预产期：<span id="dueDateShow" class="fw-600"></span></div>
+      <div class="mt-12">
+        <span class="badge badge-pink" id="weekBadge">孕 -- 周</span>
+        <span class="badge badge-mint" id="trimesterBadge">--</span>
+      </div>
+      <div class="size-visual" id="babySize">👶</div>
+      <div class="text-sm" id="babySizeText"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">📊</span> 孕期进度</h2>
+      <div class="week-grid" id="weekGrid"></div>
+      <div class="text-sm mt-8 text-center">共 <span id="totalWeeks" class="fw-600 text-primary">40</span> 周 · 你已走过 <span id="elapsedWeeks" class="fw-600 text-primary">0</span> 周</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">💡</span> 本周小贴士</h2>
+      <p class="text-sm" id="weekTip" style="line-height:1.7"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 孕期 ========== -->
+<div class="page" id="page-pregnancy">
+  <div class="card">
+    <h2><span class="emoji">🦶</span> 胎动计数</h2>
+    <p class="text-sm mb-8">建议孕28周后开始，每天固定时间数胎动</p>
+    <div class="kick-count" id="kickCount">0</div>
+    <div class="kick-timer mb-8" id="kickTimer">00:00:00</div>
+    <div class="row gap-8">
+      <button class="kick-btn" id="kickBtn" onclick="countKick()" style="flex:2">👣 宝宝踢我了</button>
+      <button class="btn btn-outline btn-sm" onclick="resetKickCounter()" style="flex:1">🔄 重置</button>
+    </div>
+    <p class="text-sm mt-8 text-center text-primary fw-600" id="kickStatus"></p>
+  </div>
+
+  <div class="card">
+    <h2><span class="emoji">⚖️</span> 孕期体重记录</h2>
+    <div class="row gap-8 mb-8">
+      <input type="number" id="pregWeight" placeholder="今日体重 (kg)" step="0.1" style="flex:2">
+      <button class="btn btn-primary btn-sm" onclick="logPregWeight()" style="flex:1">📝 记录</button>
+    </div>
+    <div id="pregWeightLogs"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="emoji">🏥</span> 产检提醒</h2>
+    <div class="row gap-8 mb-8">
+      <input type="text" id="aptName" placeholder="产检项目" style="flex:2">
+      <input type="date" id="aptDate" style="flex:1.5">
+      <button class="btn btn-primary btn-sm" onclick="addApt()" style="flex:0.8">+</button>
+    </div>
+    <div id="aptList"></div>
+  </div>
+</div>
+
+<!-- ========== 宝宝 ========== -->
+<div class="page" id="page-baby">
+  <div class="card">
+    <h2><span class="emoji">🍼</span> 哺乳计时</h2>
+    <div class="feed-side">
+      <button class="feed-btn" id="feedLeft" onclick="toggleFeed('left')">
+        <div class="feed-time" id="feedLeftTime">00:00</div>
+        <div class="feed-label">🤱 左侧</div>
+      </button>
+      <button class="feed-btn" id="feedRight" onclick="toggleFeed('right')">
+        <div class="feed-time" id="feedRightTime">00:00</div>
+        <div class="feed-label">🤱 右侧</div>
+      </button>
+    </div>
+    <div class="feed-log" id="feedLog"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="emoji">🧷</span> 换尿布记录</h2>
+    <div class="row gap-8 mb-8">
+      <button class="btn btn-outline btn-sm" onclick="logDiaper('💩')" style="flex:1">💩 便便</button>
+      <button class="btn btn-outline btn-sm" onclick="logDiaper('💧')" style="flex:1">💧 嘘嘘</button>
+      <button class="btn btn-outline btn-sm" onclick="logDiaper('💩💧')" style="flex:1">💩💧 都有</button>
+    </div>
+    <div id="diaperLog"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="emoji">📏</span> 生长记录</h2>
+    <div class="growth-row">
+      <input type="number" id="babyWeight" placeholder="体重 (kg)" step="0.01">
+      <input type="number" id="babyHeight" placeholder="身长 (cm)" step="0.1">
+    </div>
+    <div class="row gap-8">
+      <input type="date" id="growthDate">
+      <button class="btn btn-primary btn-sm" onclick="logGrowth()" style="flex:1">📝</button>
+    </div>
+    <div id="growthLogs" class="mt-12"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="emoji">😴</span> 睡眠记录</h2>
+    <div class="row gap-8 mb-8">
+      <input type="number" id="sleepHours" placeholder="睡眠时长 (小时)" step="0.5" style="flex:2">
+      <button class="btn btn-primary btn-sm" onclick="logSleep()" style="flex:1">📝</button>
+    </div>
+    <div id="sleepLogs"></div>
+  </div>
+</div>
+
+<!-- ========== 疫苗 ========== -->
+<div class="page" id="page-vaccine">
+  <div class="card">
+    <h2><span class="emoji">💉</span> 疫苗接种表</h2>
+    <p class="text-sm mb-8">点击圆圈标记已完成</p>
+    <div id="vacList"></div>
+  </div>
+</div>
+
+<!-- ========== 笔记 ========== -->
+<div class="page" id="page-notes">
+  <div class="card">
+    <h2><span class="emoji">📝</span> 孕期日记 / 育儿笔记</h2>
+    <textarea id="noteInput" rows="4" placeholder="记录此刻的心情、症状或宝宝的趣事..."></textarea>
+    <button class="btn btn-primary btn-block mt-8" onclick="addNote()">💾 保存笔记</button>
+  </div>
+  <div id="noteList"></div>
+</div>
+
+<!-- Tab Bar -->
+<nav class="tab-bar">
+  <button class="tab active" data-page="home"><span class="icon">🏠</span>首页</button>
+  <button class="tab" data-page="pregnancy"><span class="icon">🤰</span>孕期</button>
+  <button class="tab" data-page="baby"><span class="icon">👶</span>宝宝</button>
+  <button class="tab" data-page="vaccine"><span class="icon">💉</span>疫苗</button>
+  <button class="tab" data-page="notes"><span class="icon">📝</span>笔记</button>
+</nav>
+
+<script>
+// ==================== DATA ====================
+const STORAGE_KEY = 'pwa_mom_baby_data';
+
+function loadData(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw) return JSON.parse(raw);
+  return {
+    dueDate: null,
+    kickLog: [],        // [{time}]
+    pregWeights: [],    // [{date, weight}]
+    appointments: [],   // [{name, date, done}]
+    feedSessions: [],   // [{side, start, end, duration}]
+    diapers: [],        // [{time, type}]
+    growth: [],         // [{date, weight, height}]
+    sleep: [],          // [{date, hours}]
+    vaccines: [],       // [{id, done}] — id references schedule
+    notes: [],          // [{time, text}]
+    feedState: { left: {running:false,start:null,elapsed:0}, right: {running:false,start:null,elapsed:0} },
+    kickState: { count:0, start:null }
+  };
+}
+
+function saveData(data){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let D = loadData();
+
+// ==================== DUE DATE ====================
+function setDueDate(){
+  const val = document.getElementById('dueDateInput').value;
+  if(!val) return;
+  D.dueDate = val;
+  saveData(D);
+  renderAll();
+}
+
+// ==================== WEEK INFO ====================
+function getPregnancyInfo(){
+  if(!D.dueDate) return null;
+  const due = new Date(D.dueDate + 'T00:00:00');
+  const now = new Date();
+  const conceived = new Date(due);
+  conceived.setDate(conceived.getDate() - 280);
+  const diffDays = Math.floor((now - conceived) / (1000*60*60*24));
+  const week = Math.max(1, Math.min(40, Math.floor(diffDays / 7)));
+  const dayInWeek = diffDays % 7;
+  const daysLeft = Math.max(0, Math.floor((due - now) / (1000*60*60*24)));
+  const trimester = week <= 13 ? '孕早期' : week <= 27 ? '孕中期' : '孕晚期';
+  return {week, dayInWeek, daysLeft, trimester, dueDate: D.dueDate};
+}
+
+const babySizes = [
+  '', '🫘', '🫐', '🍇', '🫒', '🍋', '🥝', '🍑', '🍅', '🥑', '🥭',
+  '🍊', '🍎', '🍐', '🥚', '🍌', '🥕', '🌽', '🍠', '🥔', '🍈',
+  '🥥', '🍍', '🍞', '🧸', '🥒', '🎃', '🍉', '🎒', '👶','👶',
+  '👶','👶','👶','👶','👶','👶','👶','👶','👶'
+];
+const babySizeNames = [
+  '','芝麻','蓝莓','葡萄','橄榄','柠檬','猕猴桃','桃子','番茄','牛油果','芒果',
+  '橘子','苹果','梨','鸡蛋','香蕉','胡萝卜','玉米','红薯','土豆','哈密瓜',
+  '椰子','菠萝','面包','泰迪熊','黄瓜','南瓜','西瓜','小书包','宝宝来啦','宝宝来啦',
+  '宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦','宝宝来啦'
+];
+
+const weekTips = {
+  1: '恭喜怀孕！虽然是第一周，但身体已经在为孕育宝宝做准备了。开始补充叶酸吧。',
+  4: '胚胎已经着床啦！可能会有些轻微的着床出血。保持心情愉快很重要。',
+  8: '宝宝现在约有葡萄大小，心脏已经开始跳动了！本周可能有早孕反应，少食多餐能缓解。',
+  10: '宝宝所有重要器官都已形成。你可能还会感到疲劳，多休息。',
+  12: '早孕期快结束了！宝宝手指脚趾已经分开，开始会动了（你还感觉不到）。',
+  13: '进入孕中期！很多妈妈发现精力开始恢复。宝宝现在能皱眉、做表情了。',
+  16: '可能很快会感受到第一次胎动了！像蝴蝶在扇翅膀。宝宝能听到你的声音了。',
+  20: '孕期过半！宝宝现在很活跃。本周可以做B超大排畸检查。别忘了补充钙和铁。',
+  24: '宝宝在快速增重。你可能会感到背部酸痛，试试孕妇瑜伽或温水浴。',
+  25: '宝宝开始有规律的睡眠周期。记得数胎动——每天固定时间，感受宝宝的节奏。',
+  28: '进入孕晚期！从现在开始每天数胎动。宝宝能睁眼了，对光线有反应。',
+  30: '宝宝大脑快速发育中。可能会有些烧心和呼吸困难，这是子宫上移的正常现象。',
+  32: '宝宝通常已经头朝下了。开始准备待产包吧！',
+  34: '宝宝肺部已基本成熟。每周增重约200g。注意观察是否有早产迹象。',
+  36: '宝宝已经足月！随时可能发动。多休息，保持体力。你已经很棒了！',
+  37: '官方足月！宝宝随时可能出生。检查待产包，确认医院路线。',
+  38: '宝宝的头已经入盆了！可能会感觉呼吸顺畅了一些。',
+  39: '就快见面了！注意宫缩模式。任何时间都可能是大日子。',
+  40: '预产期到了！只有约5%的宝宝在预产期当天出生。宝宝会选好自己的时间。'
+};
+
+function getTip(week){
+  return weekTips[week] || '每个阶段都值得珍惜。照顾好自己，聆听身体的声音。';
+}
+
+// ==================== TIMERS ====================
+let feedTimers = {left:null, right:null};
+let kickTimerInterval = null;
+
+function toggleFeed(side){
+  const state = D.feedState[side];
+  if(!state.running){
+    // Start
+    state.running = true;
+    state.start = Date.now();
+    state.elapsed = 0;
+    saveData(D);
+    startFeedTimer(side);
+  } else {
+    // Stop
+    state.running = false;
+    const duration = Math.floor((Date.now() - state.start) / 1000);
+    D.feedSessions.unshift({
+      side,
+      start: new Date(state.start).toISOString(),
+      duration,
+      time: new Date().toLocaleString('zh-CN')
+    });
+    state.elapsed = 0;
+    state.start = null;
+    if(D.feedSessions.length > 50) D.feedSessions.length = 50;
+    saveData(D);
+    stopFeedTimer(side);
+    renderBaby();
+  }
+}
+
+function startFeedTimer(side){
+  const el = document.getElementById('feed' + (side==='left'?'Left':'Right') + 'Time');
+  const btn = document.getElementById('feed' + (side==='left'?'Left':'Right'));
+  btn.classList.add('running');
+  feedTimers[side] = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - D.feedState[side].start) / 1000);
+    const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+    const s = String(elapsed%60).padStart(2,'0');
+    el.textContent = m + ':' + s;
+  }, 200);
+}
+
+function stopFeedTimer(side){
+  clearInterval(feedTimers[side]);
+  const el = document.getElementById('feed' + (side==='left'?'Left':'Right') + 'Time');
+  const btn = document.getElementById('feed' + (side==='left'?'Left':'Right'));
+  btn.classList.remove('running');
+  el.textContent = '00:00';
+}
+
+// ==================== KICK COUNTER ====================
+function countKick(){
+  if(!D.kickState.start){
+    D.kickState.start = Date.now();
+    D.kickState.count = 0;
+    saveData(D);
+    startKickTimer();
+  }
+  D.kickState.count++;
+  saveData(D);
+  document.getElementById('kickCount').textContent = D.kickState.count;
+  updateKickStatus();
+}
+
+function updateKickStatus(){
+  const c = D.kickState.count;
+  const el = document.getElementById('kickStatus');
+  if(c === 0) el.textContent = '点击按钮开始计数';
+  else if(c < 5) el.textContent = '继续数，宝宝在动呢~';
+  else if(c < 10) el.textContent = '宝宝挺活跃的！';
+  else if(c < 15) el.textContent = '宝宝今天心情不错！';
+  else el.textContent = '动得好频繁！记录一下吧~';
+}
+
+function startKickTimer(){
+  kickTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - D.kickState.start) / 1000);
+    const h = String(Math.floor(elapsed/3600)).padStart(2,'0');
+    const m = String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+    const s = String(elapsed%60).padStart(2,'0');
+    document.getElementById('kickTimer').textContent = h + ':' + m + ':' + s;
+  }, 500);
+}
+
+function resetKickCounter(){
+  D.kickState = {count:0, start:null};
+  saveData(D);
+  clearInterval(kickTimerInterval);
+  document.getElementById('kickCount').textContent = '0';
+  document.getElementById('kickTimer').textContent = '00:00:00';
+  document.getElementById('kickStatus').textContent = '点击按钮开始计数';
+}
+
+// ==================== LOGGING ====================
+function logPregWeight(){
+  const w = parseFloat(document.getElementById('pregWeight').value);
+  if(!w || w <= 0) return;
+  D.pregWeights.unshift({date:new Date().toLocaleDateString('zh-CN'), weight:w});
+  if(D.pregWeights.length > 100) D.pregWeights.length = 100;
+  saveData(D);
+  document.getElementById('pregWeight').value = '';
+  renderPregnancy();
+}
+
+function addApt(){
+  const name = document.getElementById('aptName').value.trim();
+  const date = document.getElementById('aptDate').value;
+  if(!name || !date) return;
+  D.appointments.unshift({name, date, done:false});
+  D.appointments.sort((a,b) => a.date.localeCompare(b.date));
+  saveData(D);
+  document.getElementById('aptName').value = '';
+  document.getElementById('aptDate').value = '';
+  renderPregnancy();
+}
+
+function toggleApt(idx){
+  D.appointments[idx].done = !D.appointments[idx].done;
+  saveData(D);
+  renderPregnancy();
+}
+
+function logDiaper(type){
+  D.diapers.unshift({time:new Date().toLocaleString('zh-CN'), type});
+  if(D.diapers.length > 100) D.diapers.length = 100;
+  saveData(D);
+  renderBaby();
+}
+
+function logGrowth(){
+  const w = parseFloat(document.getElementById('babyWeight').value);
+  const h = parseFloat(document.getElementById('babyHeight').value);
+  const d = document.getElementById('growthDate').value || new Date().toISOString().split('T')[0];
+  if(!w && !h) return;
+  D.growth.unshift({date:d, weight:w||null, height:h||null});
+  D.growth.sort((a,b) => b.date.localeCompare(a.date));
+  if(D.growth.length > 100) D.growth.length = 100;
+  saveData(D);
+  document.getElementById('babyWeight').value = '';
+  document.getElementById('babyHeight').value = '';
+  renderBaby();
+}
+
+function logSleep(){
+  const h = parseFloat(document.getElementById('sleepHours').value);
+  if(!h || h <= 0) return;
+  D.sleep.unshift({date:new Date().toLocaleDateString('zh-CN'), hours:h});
+  if(D.sleep.length > 100) D.sleep.length = 100;
+  saveData(D);
+  document.getElementById('sleepHours').value = '';
+  renderBaby();
+}
+
+function addNote(){
+  const text = document.getElementById('noteInput').value.trim();
+  if(!text) return;
+  D.notes.unshift({time:new Date().toLocaleString('zh-CN'), text});
+  if(D.notes.length > 200) D.notes.length = 200;
+  saveData(D);
+  document.getElementById('noteInput').value = '';
+  renderNotes();
+}
+
+function toggleVaccine(id){
+  const idx = D.vaccines.findIndex(v => v.id === id);
+  if(idx >= 0){
+    D.vaccines[idx].done = !D.vaccines[idx].done;
+  } else {
+    D.vaccines.push({id, done:true});
+  }
+  saveData(D);
+  renderVaccine();
+}
+
+// ==================== RENDER ====================
+function renderAll(){
+  renderHome();
+  renderPregnancy();
+  renderBaby();
+  renderVaccine();
+  renderNotes();
+  // Restore running timers
+  if(D.feedState.left.running) startFeedTimer('left');
+  if(D.feedState.right.running) startFeedTimer('right');
+  if(D.kickState.start && D.kickState.start > 0) startKickTimer();
+}
+
+function renderHome(){
+  const info = getPregnancyInfo();
+  const setup = document.getElementById('setupCard');
+  const display = document.getElementById('homeDisplay');
+  const sub = document.getElementById('headerSub');
+
+  if(!info){
+    setup.style.display = '';
+    display.style.display = 'none';
+    sub.textContent = '设置预产期以开始';
+    if(D.dueDate) document.getElementById('dueDateInput').value = D.dueDate;
+    return;
+  }
+
+  setup.style.display = 'none';
+  display.style.display = '';
+  sub.textContent = '孕 ' + info.week + '周+' + info.dayInWeek + '天 · ' + info.trimester;
+
+  document.getElementById('countdown').textContent = info.daysLeft + ' 天';
+  document.getElementById('dueDateShow').textContent = info.dueDate;
+  document.getElementById('weekBadge').textContent = '孕 ' + info.week + ' 周+' + info.dayInWeek + '天';
+  document.getElementById('trimesterBadge').textContent = info.trimester;
+
+  const sizeIdx = Math.min(info.week, 40);
+  document.getElementById('babySize').textContent = babySizes[sizeIdx] || '👶';
+  document.getElementById('babySizeText').textContent = '宝宝现在大约 ' + (babySizeNames[sizeIdx] || '') + ' 那么大';
+
+  // Week grid
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = '';
+  for(let w=1; w<=40; w++){
+    const dot = document.createElement('div');
+    dot.className = 'week-dot';
+    if(w < info.week) dot.classList.add('past');
+    else if(w === info.week) dot.classList.add('current');
+    else dot.classList.add('future');
+    dot.textContent = w;
+    grid.appendChild(dot);
+  }
+  document.getElementById('elapsedWeeks').textContent = info.week;
+  document.getElementById('weekTip').textContent = getTip(info.week);
+}
+
+function renderPregnancy(){
+  // Kick counter
+  document.getElementById('kickCount').textContent = D.kickState.count;
+  updateKickStatus();
+
+  // Weights
+  const wDiv = document.getElementById('pregWeightLogs');
+  if(D.pregWeights.length === 0){
+    wDiv.innerHTML = '<div class="empty">暂无记录</div>';
+  } else {
+    wDiv.innerHTML = D.pregWeights.slice(0,10).map(w =>
+      '<div class="log-item"><span>'+w.date+'</span><span class="fw-600">'+w.weight+' kg</span></div>'
+    ).join('');
+  }
+
+  // Appointments
+  const aDiv = document.getElementById('aptList');
+  if(D.appointments.length === 0){
+    aDiv.innerHTML = '<div class="empty">暂无产检安排</div>';
+  } else {
+    aDiv.innerHTML = D.appointments.map((a,i) =>
+      '<div class="log-item"><div style="display:flex;align-items:center;gap:8px">' +
+      '<span style="cursor:pointer;font-size:1.1rem" onclick="toggleApt('+i+')">'+(a.done?'✅':'⭕')+'</span>' +
+      '<span style="'+(a.done?'text-decoration:line-through;color:var(--text-light)':'')+'">'+a.name+'</span>' +
+      '</div><span class="log-time">'+a.date+'</span></div>'
+    ).join('');
+  }
+}
+
+function renderBaby(){
+  // Feeding log
+  const flog = document.getElementById('feedLog');
+  if(D.feedSessions.length === 0){
+    flog.innerHTML = '<div class="empty mt-12">暂无哺乳记录</div>';
+  } else {
+    flog.innerHTML = '<div class="mt-12">' + D.feedSessions.slice(0,10).map(f => {
+      const m = Math.floor(f.duration/60);
+      const s = f.duration%60;
+      const dur = m>0 ? m+'分'+s+'秒' : s+'秒';
+      return '<div class="log-item"><span>'+(f.side==='left'?'🤱 左侧':'🤱 右侧')+'</span><span><span class="fw-600">'+dur+'</span> <span class="log-time">'+f.time+'</span></span></div>';
+    }).join('') + '</div>';
+  }
+
+  // Diapers
+  const dlog = document.getElementById('diaperLog');
+  if(D.diapers.length === 0){
+    dlog.innerHTML = '<div class="empty">暂无记录</div>';
+  } else {
+    const today = new Date().toLocaleDateString('zh-CN');
+    const todayCount = D.diapers.filter(d => d.time.startsWith(today)).length;
+    dlog.innerHTML = '<div class="text-sm mb-8">今日：<span class="fw-600 text-primary">'+todayCount+'</span> 次</div>' +
+      D.diapers.slice(0,10).map(d =>
+        '<div class="log-item"><span>'+d.type+'</span><span class="log-time">'+d.time+'</span></div>'
+      ).join('');
+  }
+
+  // Growth
+  const glog = document.getElementById('growthLogs');
+  if(D.growth.length === 0){
+    glog.innerHTML = '<div class="empty">暂无记录</div>';
+  } else {
+    glog.innerHTML = D.growth.slice(0,10).map(g =>
+      '<div class="growth-record"><span>'+g.date+'</span><span>'+(g.weight?g.weight+'kg':'')+' '+(g.height?g.height+'cm':'')+'</span></div>'
+    ).join('');
+  }
+
+  // Sleep
+  const slog = document.getElementById('sleepLogs');
+  if(D.sleep.length === 0){
+    slog.innerHTML = '<div class="empty">暂无记录</div>';
+  } else {
+    slog.innerHTML = D.sleep.slice(0,10).map(s =>
+      '<div class="log-item"><span>'+s.date+'</span><span class="fw-600">'+s.hours+' 小时</span></div>'
+    ).join('');
+  }
+}
+
+const vaccineSchedule = [
+  {age:'出生', name:'乙肝疫苗 (第1剂)', id:'hbv1'},
+  {age:'出生', name:'卡介苗', id:'bcg'},
+  {age:'1月龄', name:'乙肝疫苗 (第2剂)', id:'hbv2'},
+  {age:'2月龄', name:'脊灰疫苗 (第1剂)', id:'ipv1'},
+  {age:'3月龄', name:'脊灰疫苗 (第2剂)', id:'ipv2'},
+  {age:'3月龄', name:'百白破 (第1剂)', id:'dtap1'},
+  {age:'4月龄', name:'脊灰疫苗 (第3剂)', id:'ipv3'},
+  {age:'4月龄', name:'百白破 (第2剂)', id:'dtap2'},
+  {age:'5月龄', name:'百白破 (第3剂)', id:'dtap3'},
+  {age:'6月龄', name:'乙肝疫苗 (第3剂)', id:'hbv3'},
+  {age:'8月龄', name:'麻腮风疫苗', id:'mmr'},
+  {age:'8月龄', name:'乙脑疫苗 (第1剂)', id:'je1'},
+  {age:'18月龄', name:'百白破 (第4剂)', id:'dtap4'},
+  {age:'18月龄', name:'麻腮风 (第2剂)', id:'mmr2'},
+  {age:'18月龄', name:'甲肝疫苗', id:'hav'},
+  {age:'2岁', name:'乙脑疫苗 (第2剂)', id:'je2'},
+  {age:'3岁', name:'流脑A+C (第1剂)', id:'men1'},
+  {age:'6岁', name:'白破疫苗', id:'dt'},
+  {age:'6岁', name:'流脑A+C (第2剂)', id:'men2'},
+];
+
+function renderVaccine(){
+  const div = document.getElementById('vacList');
+  let lastAge = '';
+  let html = '';
+  vaccineSchedule.forEach(v => {
+    if(v.age !== lastAge){
+      if(lastAge) html += '<div style="height:8px"></div>';
+      html += '<div class="text-sm fw-600 text-primary mb-8">📌 '+v.age+'</div>';
+      lastAge = v.age;
+    }
+    const done = D.vaccines.find(vx => vx.id === v.id);
+    html += '<div class="vac-item">' +
+      '<div class="vac-check'+(done&&done.done?' done':'')+'" onclick="toggleVaccine(\''+v.id+'\')">'+(done&&done.done?'✓':'')+'</div>' +
+      '<div class="vac-name">'+v.name+'</div>' +
+      '</div>';
+  });
+  div.innerHTML = html;
+}
+
+function renderNotes(){
+  const div = document.getElementById('noteList');
+  if(D.notes.length === 0){
+    div.innerHTML = '<div class="empty mt-12">📖 还没有笔记，开始记录吧</div>';
+  } else {
+    div.innerHTML = D.notes.map((n,i) =>
+      '<div class="card" style="position:relative">' +
+      '<div class="flex-between mb-8"><span class="text-sm">'+n.time+'</span>' +
+      '<span style="cursor:pointer;font-size:.75rem;color:var(--danger)" onclick="deleteNote('+i+')">🗑</span></div>' +
+      '<p style="white-space:pre-wrap;font-size:.9rem">'+n.text+'</p></div>'
+    ).join('');
+  }
+}
+
+function deleteNote(idx){
+  D.notes.splice(idx,1);
+  saveData(D);
+  renderNotes();
+}
+
+// ==================== TABS ====================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-' + tab.dataset.page).classList.add('active');
+    // Re-render relevant page
+    if(tab.dataset.page === 'home') renderHome();
+    if(tab.dataset.page === 'pregnancy') renderPregnancy();
+    if(tab.dataset.page === 'baby') renderBaby();
+    if(tab.dataset.page === 'vaccine') renderVaccine();
+    if(tab.dataset.page === 'notes') renderNotes();
+  });
+});
+
+// ==================== SERVICE WORKER ====================
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ==================== INIT ====================
+renderAll();
+if(D.dueDate){
+  document.getElementById('dueDateInput').value = D.dueDate;
+}
+document.getElementById('growthDate').value = new Date().toISOString().split('T')[0];
+
+// Resume timers on load
+if(D.feedState.left.running && D.feedState.left.start){
+  D.feedState.left.running = true;
+  startFeedTimer('left');
+}
+if(D.feedState.right.running && D.feedState.right.start){
+  D.feedState.right.running = true;
+  startFeedTimer('right');
+}
+if(D.kickState.start && D.kickState.start > 0){
+  startKickTimer();
+  document.getElementById('kickCount').textContent = D.kickState.count;
+}
+</script>
+</body>
+</html>
