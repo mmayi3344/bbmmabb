@@ -139,8 +139,19 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
   transition:all .15s;
 }
 .kick-btn:active{transform:scale(.96);opacity:.85}
-.kick-count{font-size:3rem;font-weight:800;color:var(--primary);text-align:center}
-.kick-timer{text-align:center;font-size:1.2rem;font-weight:600;color:var(--text-light);font-variant-numeric:tabular-nums}
+.kick-stats{display:flex;gap:12px;justify-content:center;margin:8px 0}
+.kick-stat-box{text-align:center;flex:1;max-width:130px}
+.kick-episodes{font-size:3rem;font-weight:800;color:var(--primary);line-height:1}
+.kick-clicks{font-size:1.6rem;font-weight:700;color:var(--text-light);line-height:1}
+.kick-stat-label{font-size:.7rem;color:var(--text-light);margin-top:4px}
+.kick-timer{text-align:center;font-size:1.1rem;font-weight:600;color:var(--text-light);font-variant-numeric:tabular-nums;margin:4px 0}
+.window-selector{display:flex;gap:6px;justify-content:center;margin:8px 0}
+.window-opt{
+  padding:5px 14px;border-radius:14px;border:1.5px solid var(--border);
+  background:#fff;font-size:.75rem;cursor:pointer;font-family:inherit;
+  color:var(--text-light);transition:all .2s;
+}
+.window-opt.active{background:var(--primary-light);border-color:var(--primary);color:var(--primary);font-weight:600}
 
 /* Feeding */
 .feed-side{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
@@ -260,14 +271,34 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 <div class="page" id="page-pregnancy">
   <div class="card">
     <h2><span class="emoji">🦶</span> 胎动计数</h2>
-    <p class="text-sm mb-8">建议孕28周后开始，每天固定时间数胎动</p>
-    <div class="kick-count" id="kickCount">0</div>
-    <div class="kick-timer mb-8" id="kickTimer">00:00:00</div>
+    <p class="text-sm mb-8">建议孕28周后开始 · 每天固定时间 · <span id="kickWindowLabel">窗口内多次=1次</span></p>
+    <div class="window-selector">
+      <span class="text-sm">合并窗口：</span>
+      <button class="window-opt active" data-w="3" onclick="setKickWindow(3,this)">3分钟</button>
+      <button class="window-opt" data-w="5" onclick="setKickWindow(5,this)">5分钟</button>
+      <button class="window-opt" data-w="10" onclick="setKickWindow(10,this)">10分钟</button>
+    </div>
+    <div class="kick-stats">
+      <div class="kick-stat-box">
+        <div class="kick-episodes" id="kickEpisodes">0</div>
+        <div class="kick-stat-label">✅ 有效胎动</div>
+      </div>
+      <div class="kick-stat-box">
+        <div class="kick-clicks" id="kickClickCount">0</div>
+        <div class="kick-stat-label">👣 点击次数</div>
+      </div>
+    </div>
+    <div class="kick-timer" id="kickTimer">00:00:00</div>
     <div class="row gap-8">
       <button class="kick-btn" id="kickBtn" onclick="countKick()" style="flex:2">👣 宝宝踢我了</button>
-      <button class="btn btn-outline btn-sm" onclick="resetKickCounter()" style="flex:1">🔄 重置</button>
+      <button class="btn btn-outline btn-sm" onclick="endKickSession()" style="flex:1">💾 结束并保存</button>
     </div>
     <p class="text-sm mt-8 text-center text-primary fw-600" id="kickStatus"></p>
+  </div>
+
+  <div class="card" id="kickHistoryCard">
+    <h2><span class="emoji">📋</span> 胎动记录</h2>
+    <div id="kickLogView"></div>
   </div>
 
   <div class="card">
@@ -377,7 +408,7 @@ function loadData(){
   if(raw) return JSON.parse(raw);
   return {
     dueDate: null,
-    kickLog: [],        // [{time}]
+    kickLog: [],        // [{date,startTime,endTime,episodes,clicks,duration,window}]
     pregWeights: [],    // [{date, weight}]
     appointments: [],   // [{name, date, done}]
     feedSessions: [],   // [{side, start, end, duration}]
@@ -387,7 +418,7 @@ function loadData(){
     vaccines: [],       // [{id, done}] — id references schedule
     notes: [],          // [{time, text}]
     feedState: { left: {running:false,start:null,elapsed:0}, right: {running:false,start:null,elapsed:0} },
-    kickState: { count:0, start:null }
+    kickState: { episodes:0, clicks:0, start:null, lastKickTime:0, window:3 }
   };
 }
 
@@ -513,27 +544,48 @@ function stopFeedTimer(side){
 }
 
 // ==================== KICK COUNTER ====================
+function setKickWindow(minutes, el){
+  D.kickState.window = minutes;
+  saveData(D);
+  document.querySelectorAll('.window-opt').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('kickWindowLabel').textContent = minutes+'分钟内多次=1次有效';
+}
+
 function countKick(){
+  const now = Date.now();
   if(!D.kickState.start){
-    D.kickState.start = Date.now();
-    D.kickState.count = 0;
+    D.kickState.start = now;
+    D.kickState.episodes = 0;
+    D.kickState.clicks = 0;
+    D.kickState.lastKickTime = 0;
     saveData(D);
     startKickTimer();
   }
-  D.kickState.count++;
+  D.kickState.clicks++;
+  const windowMs = D.kickState.window * 60 * 1000;
+  // New episode if first kick, or if outside the merge window
+  if(D.kickState.lastKickTime === 0 || (now - D.kickState.lastKickTime) >= windowMs){
+    D.kickState.episodes++;
+    D.kickState.lastKickTime = now;
+  }
+  // Always update lastKickTime so window keeps rolling from most recent kick
+  D.kickState.lastKickTime = now;
   saveData(D);
-  document.getElementById('kickCount').textContent = D.kickState.count;
+  document.getElementById('kickEpisodes').textContent = D.kickState.episodes;
+  document.getElementById('kickClickCount').textContent = D.kickState.clicks;
   updateKickStatus();
 }
 
 function updateKickStatus(){
-  const c = D.kickState.count;
+  const e = D.kickState.episodes;
   const el = document.getElementById('kickStatus');
-  if(c === 0) el.textContent = '点击按钮开始计数';
-  else if(c < 5) el.textContent = '继续数，宝宝在动呢~';
-  else if(c < 10) el.textContent = '宝宝挺活跃的！';
-  else if(c < 15) el.textContent = '宝宝今天心情不错！';
-  else el.textContent = '动得好频繁！记录一下吧~';
+  if(e === 0) el.textContent = '点击按钮开始计数';
+  else if(e < 3) el.textContent = '继续数，宝宝在动呢~';
+  else if(e < 5) el.textContent = '宝宝挺活跃的！';
+  else if(e < 8) el.textContent = '宝宝今天心情不错！';
+  else if(e < 10) el.textContent = '快达标了，加油观察！';
+  else el.textContent = '🎉 有效胎动达标，宝宝很健康！';
 }
 
 function startKickTimer(){
@@ -546,13 +598,43 @@ function startKickTimer(){
   }, 500);
 }
 
+function endKickSession(){
+  if(!D.kickState.start || D.kickState.episodes === 0){
+    resetKickCounter();
+    return;
+  }
+  const now = Date.now();
+  const duration = Math.floor((now - D.kickState.start) / 1000);
+  D.kickLog.unshift({
+    date: new Date().toLocaleDateString('zh-CN'),
+    startTime: new Date(D.kickState.start).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
+    endTime: new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
+    episodes: D.kickState.episodes,
+    clicks: D.kickState.clicks,
+    duration: duration,
+    window: D.kickState.window
+  });
+  if(D.kickLog.length > 100) D.kickLog.length = 100;
+  resetKickCounter();
+  saveData(D);
+  renderPregnancy();
+}
+
 function resetKickCounter(){
-  D.kickState = {count:0, start:null};
+  const w = D.kickState.window;
+  D.kickState = { episodes:0, clicks:0, start:null, lastKickTime:0, window: w };
   saveData(D);
   clearInterval(kickTimerInterval);
-  document.getElementById('kickCount').textContent = '0';
+  document.getElementById('kickEpisodes').textContent = '0';
+  document.getElementById('kickClickCount').textContent = '0';
   document.getElementById('kickTimer').textContent = '00:00:00';
   document.getElementById('kickStatus').textContent = '点击按钮开始计数';
+}
+
+function deleteKickLog(idx){
+  D.kickLog.splice(idx,1);
+  saveData(D);
+  renderPregnancy();
 }
 
 // ==================== LOGGING ====================
@@ -694,8 +776,30 @@ function renderHome(){
 
 function renderPregnancy(){
   // Kick counter
-  document.getElementById('kickCount').textContent = D.kickState.count;
+  document.getElementById('kickEpisodes').textContent = D.kickState.episodes;
+  document.getElementById('kickClickCount').textContent = D.kickState.clicks;
   updateKickStatus();
+  // Window selector
+  document.querySelectorAll('.window-opt').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.w) === D.kickState.window);
+  });
+  document.getElementById('kickWindowLabel').textContent = D.kickState.window+'分钟内多次=1次有效';
+  // Kick history
+  const klog = document.getElementById('kickLogView');
+  if(D.kickLog.length === 0){
+    klog.innerHTML = '<div class="empty">暂无记录 · 结束计数后自动保存</div>';
+  } else {
+    klog.innerHTML = D.kickLog.slice(0,20).map((k,i) => {
+      const durMin = Math.floor(k.duration/60);
+      const durSec = k.duration%60;
+      const durStr = durMin>0 ? durMin+'分'+durSec+'秒' : durSec+'秒';
+      return '<div class="log-item" style="position:relative">'+
+        '<div><span class="fw-600">'+k.episodes+'次有效</span> <span class="text-sm">/'+k.clicks+'次点击</span><br>'+
+        '<span class="log-time">'+k.date+' '+k.startTime+' → '+k.endTime+' · '+durStr+' · '+k.window+'分钟窗口</span></div>'+
+        '<span style="cursor:pointer;font-size:.8rem;color:var(--danger)" onclick="deleteKickLog('+i+')">🗑</span>'+
+        '</div>';
+    }).join('');
+  }
 
   // Weights
   const wDiv = document.getElementById('pregWeightLogs');
@@ -869,7 +973,9 @@ if(D.feedState.right.running && D.feedState.right.start){
 }
 if(D.kickState.start && D.kickState.start > 0){
   startKickTimer();
-  document.getElementById('kickCount').textContent = D.kickState.count;
+  document.getElementById('kickEpisodes').textContent = D.kickState.episodes;
+  document.getElementById('kickClickCount').textContent = D.kickState.clicks;
+  updateKickStatus();
 }
 </script>
 </body>
