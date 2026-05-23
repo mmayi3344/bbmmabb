@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FDF2F4">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤰</text></svg>">
-<title>孕宝助手 · 孕期 & 新生儿</title>
+<title id="docTitle">孕宝助手 · 孕期 & 新生儿</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -226,7 +226,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 <body>
 
 <header>
-  <h1>🤰 孕宝助手</h1>
+  <h1 contenteditable="true" id="appTitle" oninput="saveTitle()">🤰 孕宝助手</h1>
   <div class="sub" id="headerSub">设置预产期以开始</div>
 </header>
 
@@ -407,6 +407,7 @@ function loadData(){
   const raw = localStorage.getItem(STORAGE_KEY);
   if(raw) return JSON.parse(raw);
   return {
+    appTitle: '孕宝助手',
     dueDate: null,
     kickLog: [],        // [{date,startTime,endTime,episodes,clicks,duration,window}]
     pregWeights: [],    // [{date, weight}]
@@ -961,6 +962,21 @@ if(D.dueDate){
   document.getElementById('dueDateInput').value = D.dueDate;
 }
 document.getElementById('growthDate').value = new Date().toISOString().split('T')[0];
+
+// Custom title
+if(D.appTitle){
+  document.getElementById('appTitle').textContent = D.appTitle;
+  document.getElementById('docTitle').textContent = D.appTitle + ' · 孕期 & 新生儿';
+  document.querySelector('meta[name="apple-mobile-web-app-title"]').content = D.appTitle;
+}
+function saveTitle(){
+  const t = document.getElementById('appTitle').textContent.trim();
+  if(!t) return;
+  D.appTitle = t;
+  saveData(D);
+  document.getElementById('docTitle').textContent = t + ' · 孕期 & 新生儿';
+  document.querySelector('meta[name="apple-mobile-web-app-title"]').content = t;
+}
 
 // Resume timers on load
 if(D.feedState.left.running && D.feedState.left.start){
