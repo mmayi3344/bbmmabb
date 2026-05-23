@@ -217,6 +217,13 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 .size-visual{text-align:center;font-size:3rem;margin:12px 0}
 
 .empty{text-align:center;padding:30px 16px;color:var(--text-light);font-size:.85rem}
+.btn-clear{
+  font-size:.72rem;color:var(--danger);background:none;border:none;
+  cursor:pointer;padding:4px 8px;font-family:inherit;
+}
+.btn-clear:hover{text-decoration:underline}
+.section-header{display:flex;justify-content:space-between;align-items:center}
+.section-header h2{margin-bottom:0!important}
 
 /* Due date setup */
 .setup-card{text-align:center}
@@ -638,6 +645,27 @@ function deleteKickLog(idx){
   renderPregnancy();
 }
 
+// Generic clear & delete helpers
+function clearAll(type){
+  if(!confirm('确定要清空全部记录吗？此操作不可恢复。')) return;
+  const keys = {
+    pregWeights:'孕期体重', kickLog:'胎动', appointments:'产检',
+    feedSessions:'哺乳', diapers:'尿布', growth:'生长', sleep:'睡眠', notes:'笔记'
+  };
+  D[type] = [];
+  saveData(D);
+  if(type==='pregWeights'||type==='kickLog'||type==='appointments') renderPregnancy();
+  else if(type==='feedSessions'||type==='diapers'||type==='growth'||type==='sleep') renderBaby();
+  else renderNotes();
+}
+function deletePregWeight(i){D.pregWeights.splice(i,1);saveData(D);renderPregnancy();}
+function deleteApt(i){D.appointments.splice(i,1);saveData(D);renderPregnancy();}
+function deleteFeed(i){D.feedSessions.splice(i,1);saveData(D);renderBaby();}
+function deleteDiaper(i){D.diapers.splice(i,1);saveData(D);renderBaby();}
+function deleteGrowth(i){D.growth.splice(i,1);saveData(D);renderBaby();}
+function deleteSleep(i){D.sleep.splice(i,1);saveData(D);renderBaby();}
+function clearKickHistory(){D.kickLog=[];saveData(D);renderPregnancy();}
+
 // ==================== LOGGING ====================
 function logPregWeight(){
   const w = parseFloat(document.getElementById('pregWeight').value);
@@ -790,16 +818,17 @@ function renderPregnancy(){
   if(D.kickLog.length === 0){
     klog.innerHTML = '<div class="empty">暂无记录 · 结束计数后自动保存</div>';
   } else {
-    klog.innerHTML = D.kickLog.slice(0,20).map((k,i) => {
-      const durMin = Math.floor(k.duration/60);
-      const durSec = k.duration%60;
-      const durStr = durMin>0 ? durMin+'分'+durSec+'秒' : durSec+'秒';
-      return '<div class="log-item" style="position:relative">'+
-        '<div><span class="fw-600">'+k.episodes+'次有效</span> <span class="text-sm">/'+k.clicks+'次点击</span><br>'+
-        '<span class="log-time">'+k.date+' '+k.startTime+' → '+k.endTime+' · '+durStr+' · '+k.window+'分钟窗口</span></div>'+
-        '<span style="cursor:pointer;font-size:.8rem;color:var(--danger)" onclick="deleteKickLog('+i+')">🗑</span>'+
-        '</div>';
-    }).join('');
+    klog.innerHTML = '<div class="flex-between mb-8"><span></span><button class="btn-clear" onclick="clearKickHistory()">🗑 清空全部</button></div>' +
+      D.kickLog.slice(0,20).map((k,i) => {
+        const durMin = Math.floor(k.duration/60);
+        const durSec = k.duration%60;
+        const durStr = durMin>0 ? durMin+'分'+durSec+'秒' : durSec+'秒';
+        return '<div class="log-item" style="position:relative">'+
+          '<div><span class="fw-600">'+k.episodes+'次有效</span> <span class="text-sm">/'+k.clicks+'次点击</span><br>'+
+          '<span class="log-time">'+k.date+' '+k.startTime+' → '+k.endTime+' · '+durStr+' · '+k.window+'分钟窗口</span></div>'+
+          '<span style="cursor:pointer;font-size:.8rem;color:var(--danger)" onclick="deleteKickLog('+i+')">🗑</span>'+
+          '</div>';
+      }).join('');
   }
 
   // Weights
@@ -807,9 +836,10 @@ function renderPregnancy(){
   if(D.pregWeights.length === 0){
     wDiv.innerHTML = '<div class="empty">暂无记录</div>';
   } else {
-    wDiv.innerHTML = D.pregWeights.slice(0,10).map(w =>
-      '<div class="log-item"><span>'+w.date+'</span><span class="fw-600">'+w.weight+' kg</span></div>'
-    ).join('');
+    wDiv.innerHTML = '<div class="flex-between mb-8"><span></span><button class="btn-clear" onclick="clearAll(\'pregWeights\')">🗑 清空全部</button></div>' +
+      D.pregWeights.slice(0,10).map((w,i) =>
+        '<div class="log-item" style="position:relative"><span>'+w.date+'</span><span><span class="fw-600">'+w.weight+' kg</span> <span style="cursor:pointer;font-size:.75rem;color:var(--danger);margin-left:8px" onclick="deletePregWeight('+i+')">✕</span></span></div>'
+      ).join('');
   }
 
   // Appointments
@@ -817,12 +847,13 @@ function renderPregnancy(){
   if(D.appointments.length === 0){
     aDiv.innerHTML = '<div class="empty">暂无产检安排</div>';
   } else {
-    aDiv.innerHTML = D.appointments.map((a,i) =>
-      '<div class="log-item"><div style="display:flex;align-items:center;gap:8px">' +
-      '<span style="cursor:pointer;font-size:1.1rem" onclick="toggleApt('+i+')">'+(a.done?'✅':'⭕')+'</span>' +
-      '<span style="'+(a.done?'text-decoration:line-through;color:var(--text-light)':'')+'">'+a.name+'</span>' +
-      '</div><span class="log-time">'+a.date+'</span></div>'
-    ).join('');
+    aDiv.innerHTML = '<div class="flex-between mb-8"><span></span><button class="btn-clear" onclick="clearAll(\'appointments\')">🗑 清空全部</button></div>' +
+      D.appointments.map((a,i) =>
+        '<div class="log-item" style="position:relative"><div style="display:flex;align-items:center;gap:8px">' +
+        '<span style="cursor:pointer;font-size:1.1rem" onclick="toggleApt('+i+')">'+(a.done?'✅':'⭕')+'</span>' +
+        '<span style="'+(a.done?'text-decoration:line-through;color:var(--text-light)':'')+'">'+a.name+'</span>' +
+        '</div><span><span class="log-time">'+a.date+'</span> <span style="cursor:pointer;font-size:.75rem;color:var(--danger);margin-left:8px" onclick="deleteApt('+i+')">✕</span></span></div>'
+      ).join('');
   }
 }
 
@@ -832,12 +863,13 @@ function renderBaby(){
   if(D.feedSessions.length === 0){
     flog.innerHTML = '<div class="empty mt-12">暂无哺乳记录</div>';
   } else {
-    flog.innerHTML = '<div class="mt-12">' + D.feedSessions.slice(0,10).map(f => {
-      const m = Math.floor(f.duration/60);
-      const s = f.duration%60;
-      const dur = m>0 ? m+'分'+s+'秒' : s+'秒';
-      return '<div class="log-item"><span>'+(f.side==='left'?'🤱 左侧':'🤱 右侧')+'</span><span><span class="fw-600">'+dur+'</span> <span class="log-time">'+f.time+'</span></span></div>';
-    }).join('') + '</div>';
+    flog.innerHTML = '<div class="mt-12"><div class="flex-between mb-8"><span></span><button class="btn-clear" onclick="clearAll(\'feedSessions\')">🗑 清空全部</button></div>' +
+      D.feedSessions.slice(0,10).map((f,i) => {
+        const m = Math.floor(f.duration/60);
+        const s = f.duration%60;
+        const dur = m>0 ? m+'分'+s+'秒' : s+'秒';
+        return '<div class="log-item" style="position:relative"><span>'+(f.side==='left'?'🤱 左侧':'🤱 右侧')+'</span><span><span class="fw-600">'+dur+'</span> <span class="log-time">'+f.time+'</span> <span style="cursor:pointer;font-size:.75rem;color:var(--danger);margin-left:6px" onclick="deleteFeed('+i+')">✕</span></span></div>';
+      }).join('') + '</div>';
   }
 
   // Diapers
@@ -847,9 +879,9 @@ function renderBaby(){
   } else {
     const today = new Date().toLocaleDateString('zh-CN');
     const todayCount = D.diapers.filter(d => d.time.startsWith(today)).length;
-    dlog.innerHTML = '<div class="text-sm mb-8">今日：<span class="fw-600 text-primary">'+todayCount+'</span> 次</div>' +
-      D.diapers.slice(0,10).map(d =>
-        '<div class="log-item"><span>'+d.type+'</span><span class="log-time">'+d.time+'</span></div>'
+    dlog.innerHTML = '<div class="flex-between mb-8"><span class="text-sm">今日：<span class="fw-600 text-primary">'+todayCount+'</span> 次</span><button class="btn-clear" onclick="clearAll(\'diapers\')">🗑 清空全部</button></div>' +
+      D.diapers.slice(0,10).map((d,i) =>
+        '<div class="log-item" style="position:relative"><span>'+d.type+'</span><span><span class="log-time">'+d.time+'</span> <span style="cursor:pointer;font-size:.75rem;color:var(--danger);margin-left:6px" onclick="deleteDiaper('+i+')">✕</span></span></div>'
       ).join('');
   }
 
@@ -858,9 +890,10 @@ function renderBaby(){
   if(D.growth.length === 0){
     glog.innerHTML = '<div class="empty">暂无记录</div>';
   } else {
-    glog.innerHTML = D.growth.slice(0,10).map(g =>
-      '<div class="growth-record"><span>'+g.date+'</span><span>'+(g.weight?g.weight+'kg':'')+' '+(g.height?g.height+'cm':'')+'</span></div>'
-    ).join('');
+    glog.innerHTML = '<div class="flex-between mb-8"><span></span><button class="btn-clear" onclick="clearAll(\'growth\')">🗑 清空全部</button></div>' +
+      D.growth.slice(0,10).map((g,i) =>
+        '<div class="growth-record" style="position:relative"><span>'+g.date+'</span><span><span>'+(g.weight?g.weight+'kg':'')+' '+(g.height?g.height+'cm':'')+'</span> <span style="cursor:pointer;font-size:.75rem;color:var(--danger);margin-left:6px" onclick="deleteGrowth('+i+')">✕</span></span></div>'
+      ).join('');
   }
 
   // Sleep
@@ -868,9 +901,10 @@ function renderBaby(){
   if(D.sleep.length === 0){
     slog.innerHTML = '<div class="empty">暂无记录</div>';
   } else {
-    slog.innerHTML = D.sleep.slice(0,10).map(s =>
-      '<div class="log-item"><span>'+s.date+'</span><span class="fw-600">'+s.hours+' 小时</span></div>'
-    ).join('');
+    slog.innerHTML = '<div class="flex-between mb-8"><span></span><button class="btn-clear" onclick="clearAll(\'sleep\')">🗑 清空全部</button></div>' +
+      D.sleep.slice(0,10).map((s,i) =>
+        '<div class="log-item" style="position:relative"><span>'+s.date+'</span><span><span class="fw-600">'+s.hours+' 小时</span> <span style="cursor:pointer;font-size:.75rem;color:var(--danger);margin-left:6px" onclick="deleteSleep('+i+')">✕</span></span></div>'
+      ).join('');
   }
 }
 
@@ -920,12 +954,13 @@ function renderNotes(){
   if(D.notes.length === 0){
     div.innerHTML = '<div class="empty mt-12">📖 还没有笔记，开始记录吧</div>';
   } else {
-    div.innerHTML = D.notes.map((n,i) =>
-      '<div class="card" style="position:relative">' +
-      '<div class="flex-between mb-8"><span class="text-sm">'+n.time+'</span>' +
-      '<span style="cursor:pointer;font-size:.75rem;color:var(--danger)" onclick="deleteNote('+i+')">🗑</span></div>' +
-      '<p style="white-space:pre-wrap;font-size:.9rem">'+n.text+'</p></div>'
-    ).join('');
+    div.innerHTML = '<div class="flex-between mb-8"><span class="text-sm">共 '+D.notes.length+' 条</span><button class="btn-clear" onclick="clearAll(\'notes\')">🗑 清空全部</button></div>' +
+      D.notes.map((n,i) =>
+        '<div class="card" style="position:relative">' +
+        '<div class="flex-between mb-8"><span class="text-sm">'+n.time+'</span>' +
+        '<span style="cursor:pointer;font-size:.75rem;color:var(--danger)" onclick="deleteNote('+i+')">🗑</span></div>' +
+        '<p style="white-space:pre-wrap;font-size:.9rem">'+n.text+'</p></div>'
+      ).join('');
   }
 }
 
