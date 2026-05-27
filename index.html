@@ -139,6 +139,12 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
 .week-dot.current{background:#2E7D32;color:#fff;box-shadow:0 0 0 3px rgba(67,160,71,0.25)}
 .week-dot.future{background:var(--border);color:var(--text-light)}
 
+/* Weight Chart */
+.weight-chart-wrap{position:relative;margin:0 -4px 12px;overflow:hidden;border-radius:var(--radius-sm);background:var(--bg)}
+.weight-chart-wrap canvas{width:100%;height:auto;display:block}
+.weight-chart-empty{text-align:center;padding:40px 16px;color:var(--text-light);font-size:.85rem}
+.weight-chart-empty .icon{font-size:2rem;margin-bottom:8px;display:block}
+
 /* Kick Counter */
 .kick-btn{
   width:100%;padding:28px;border-radius:var(--radius);border:none;
@@ -332,7 +338,19 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
       <input type="number" id="pregWeight" placeholder="今日体重 (kg)" step="0.1" style="flex:2">
       <button class="btn btn-primary btn-sm" onclick="logPregWeight()" style="flex:1">📝 记录</button>
     </div>
-    <div id="pregWeightLogs"></div>
+    <div class="sub-tab-bar">
+      <button class="sub-tab active" data-sub="weight-log" onclick="switchSubTab('weight-log',this)">📋 记录</button>
+      <button class="sub-tab" data-sub="weight-chart" onclick="switchSubTab('weight-chart',this);drawWeightChart()">📈 趋势</button>
+    </div>
+    <div class="sub-page active" id="sub-weight-log">
+      <div id="pregWeightLogs"></div>
+    </div>
+    <div class="sub-page" id="sub-weight-chart">
+      <div class="weight-chart-wrap">
+        <canvas id="weightChartCanvas"></canvas>
+        <div class="weight-chart-empty" id="weightChartEmpty"><span class="icon">📊</span>记录体重后自动生成趋势图</div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -666,8 +684,7 @@ function countKick(){
     D.kickState.episodes++;
     D.kickState.lastKickTime = now;
   }
-  // Always update lastKickTime so window keeps rolling from most recent kick
-  D.kickState.lastKickTime = now;
+
   saveData(D);
   document.getElementById('kickEpisodes').textContent = D.kickState.episodes;
   document.getElementById('kickClickCount').textContent = D.kickState.clicks;
@@ -743,12 +760,12 @@ function clearAll(type){
   };
   D[type] = [];
   saveData(D);
-  if(type==='pregWeights'||type==='kickLog'||type==='appointments'||type==='checkupRecords') renderPregnancy();
+  if(type==='pregWeights'||type==='kickLog'||type==='appointments'||type==='checkupRecords'){ renderPregnancy(); drawWeightChart(); }
   else if(type==='feedSessions'||type==='diapers'||type==='growth'||type==='sleep') renderBaby();
   else if(type==='hospitalBag') renderHospitalBag();
   else renderNotes();
 }
-function deletePregWeight(i){D.pregWeights.splice(i,1);saveData(D);renderPregnancy();}
+function deletePregWeight(i){D.pregWeights.splice(i,1);saveData(D);renderPregnancy();drawWeightChart();}
 function deleteApt(i){D.appointments.splice(i,1);saveData(D);renderPregnancy();}
 function deleteFeed(i){D.feedSessions.splice(i,1);saveData(D);renderBaby();}
 function deleteDiaper(i){D.diapers.splice(i,1);saveData(D);renderBaby();}
@@ -765,6 +782,7 @@ function logPregWeight(){
   saveData(D);
   document.getElementById('pregWeight').value = '';
   renderPregnancy();
+  drawWeightChart();
 }
 
 function addApt(){
@@ -1067,6 +1085,171 @@ function renderHome(){
   document.getElementById('weekTip').textContent = getTip(info.week);
 }
 
+function drawWeightChart(){
+  const canvas = document.getElementById('weightChartCanvas');
+  const empty = document.getElementById('weightChartEmpty');
+  if(D.pregWeights.length < 2){
+    canvas.style.display = 'none';
+    empty.style.display = 'block';
+    if(D.pregWeights.length === 1){
+      empty.innerHTML = '<span class="icon">📊</span>再记录一次体重，趋势图就会自动生成';
+    }
+    return;
+  }
+  canvas.style.display = 'block';
+  empty.style.display = 'none';
+
+  // Sort by date ascending
+  const sorted = [...D.pregWeights].sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  // Group by ISO week
+  function getWeek(dStr){
+    const d = new Date(dStr);
+    const dayNum = (d.getDay() + 6) % 7; // Monday=0
+    d.setDate(d.getDate() - dayNum + 3); // Thursday of same week
+    const jan4 = new Date(d.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((d - jan4) / 86400000 - 3 + (jan4.getDay() + 6) % 7) / 7);
+    return d.getFullYear() + '-W' + String(weekNum).padStart(2,'0');
+  }
+
+  const weeks = {};
+  sorted.forEach(r => {
+    const w = getWeek(r.date);
+    if(!weeks[w]) weeks[w] = [];
+    weeks[w].push(r.weight);
+  });
+
+  const weekLabels = Object.keys(weeks).sort();
+  const weekAvgs = weekLabels.map(w => {
+    const vals = weeks[w];
+    return vals.reduce((a,b)=>a+b,0) / vals.length;
+  });
+
+  // Set canvas dimensions (2x for retina)
+  const card = canvas.closest('.card');
+  const cardRect = card ? card.getBoundingClientRect() : null;
+  const availW = cardRect && cardRect.width > 0 ? cardRect.width - 40 : Math.min(window.innerWidth - 48, 400);
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.max(availW, 280);
+  const h = Math.round(w * 0.55);
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = {top:20, bottom:36, left:44, right:16};
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+
+  // Find Y range with some padding
+  const allWeights = sorted.map(r => r.weight);
+  let yMin = Math.floor(Math.min(...allWeights));
+  let yMax = Math.ceil(Math.max(...allWeights));
+  if(yMax - yMin < 2){ yMin -= 1; yMax += 1; }
+  const yRange = yMax - yMin || 1;
+
+  // Clear
+  ctx.clearRect(0,0,w,h);
+
+  // Axis lines
+  ctx.strokeStyle = '#eee';
+  ctx.lineWidth = 1;
+  // Grid lines
+  const gridLines = 4;
+  ctx.font = '11px -apple-system, sans-serif';
+  ctx.fillStyle = '#999';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for(let i=0;i<=gridLines;i++){
+    const y = pad.top + plotH * (1 - i/gridLines);
+    const val = yMin + (yRange/gridLines)*i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w-pad.right, y);
+    ctx.stroke();
+    ctx.fillText(val.toFixed(1), pad.left-6, y);
+  }
+
+  if(weekLabels.length < 2) return;
+
+  // X positions
+  const stepX = plotW / (weekLabels.length - 1);
+  const pts = weekLabels.map((l,i) => ({
+    x: pad.left + i * stepX,
+    y: pad.top + plotH * (1 - (weekAvgs[i] - yMin) / yRange),
+    label: l,
+    val: weekAvgs[i]
+  }));
+
+  // Fill area under line
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pad.top + plotH);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, pad.top + plotH);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top+plotH);
+  grad.addColorStop(0, 'rgba(232,146,165,0.3)');
+  grad.addColorStop(1, 'rgba(232,146,165,0.02)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle = '#E892A5';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Points
+  pts.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4.5, 0, Math.PI*2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#E892A5';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  // X labels
+  ctx.fillStyle = '#999';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  pts.forEach(p => {
+    ctx.fillText(p.label, p.x, pad.top + plotH + 8);
+    // Value above point
+    ctx.fillStyle = '#666';
+    ctx.font = 'bold 11px -apple-system, sans-serif';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(p.val.toFixed(1)+'kg', p.x, p.y - 8);
+    ctx.fillStyle = '#999';
+    ctx.font = '11px -apple-system, sans-serif';
+  });
+
+  // Weekly change indicators (arrows between consecutive points)
+  ctx.font = '12px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  for(let i=1;i<pts.length;i++){
+    const diff = weekAvgs[i] - weekAvgs[i-1];
+    const mx = (pts[i-1].x + pts[i].x) / 2;
+    const my = (pts[i-1].y + pts[i].y) / 2 - 16;
+    if(diff > 0){
+      ctx.fillStyle = '#E53935';
+      ctx.fillText('▲ +'+diff.toFixed(1), mx, my);
+    }else if(diff < 0){
+      ctx.fillStyle = '#43A047';
+      ctx.fillText('▼ '+diff.toFixed(1), mx, my);
+    }else{
+      ctx.fillStyle = '#999';
+      ctx.fillText('— 0', mx, my);
+    }
+  }
+}
+
 function renderPregnancy(){
   // Kick counter
   document.getElementById('kickEpisodes').textContent = D.kickState.episodes;
@@ -1135,6 +1318,7 @@ function renderPregnancy(){
         '</div>'
       ).join('');
   }
+  drawWeightChart();
 }
 
 function renderBaby(){
