@@ -26,6 +26,10 @@ function loadData(){
     notes: [],
     checkupRecords: [],
     hospitalBag: [],
+    syncMode: null,
+    syncProvider: null,
+    familyId: null,
+    cloudConfig: { url: '', anonKey: '' },
     feedState: { left: {running:false,start:null,elapsed:0}, right: {running:false,start:null,elapsed:0} },
     kickState: { episodes:0, clicks:0, start:null, lastKickTime:0, window:3 }
   };
@@ -51,6 +55,55 @@ function saveData(data){
 }
 
 let D = loadData();
+
+// ==================== SYNC MODE ====================
+function chooseMode(mode){
+  D.syncMode = mode;
+  D.syncProvider = mode === 'collab' ? 'supabase' : null;
+  if(mode === 'local'){
+    D.familyId = null;
+  } else if(!D.familyId){
+    D.familyId = 'family_' + Date.now().toString(36);
+  }
+  saveData(D);
+  closeModeChooser();
+  renderSyncMode();
+}
+
+function openModeChooser(){
+  const modal = document.getElementById('modeChooser');
+  if(modal) modal.style.display = 'flex';
+}
+
+function closeModeChooser(){
+  const modal = document.getElementById('modeChooser');
+  if(modal) modal.style.display = 'none';
+}
+
+function renderSyncMode(){
+  const mode = D.syncMode || 'local';
+  const chip = document.getElementById('syncChip');
+  const badge = document.getElementById('settingsModeBadge');
+  const help = document.getElementById('syncModeHelp');
+  const cloud = document.getElementById('cloudSetup');
+
+  if(chip){
+    chip.textContent = mode === 'collab' ? '家庭协同 · 待配置' : '本地模式';
+    chip.classList.toggle('is-collab', mode === 'collab');
+  }
+  if(badge){
+    badge.textContent = mode === 'collab' ? '协同' : '本地';
+    badge.className = 'badge ' + (mode === 'collab' ? 'badge-pink' : 'badge-mint');
+  }
+  if(help){
+    help.textContent = mode === 'collab'
+      ? '已选择家庭协同。当前仍使用本地缓存，配置 Supabase 后可同步给另一位家长。'
+      : '数据保存在当前设备，支持离线使用，也可以随时导出备份。';
+  }
+  if(cloud){
+    cloud.style.display = mode === 'collab' ? 'block' : 'none';
+  }
+}
 
 // ==================== DUE DATE ====================
 function setDueDate(){
@@ -505,6 +558,7 @@ function switchSubTab(sub, el){
 // ==================== SETTINGS ====================
 function openSettings(){
   document.getElementById('settingsModal').style.display = 'flex';
+  renderSyncMode();
 }
 function closeSettings(){
   document.getElementById('settingsModal').style.display = 'none';
@@ -1008,6 +1062,10 @@ if('serviceWorker' in navigator){
 
 // ==================== INIT ====================
 renderAll();
+renderSyncMode();
+if(!D.syncMode){
+  openModeChooser();
+}
 if(D.dueDate){
   document.getElementById('dueDateInput').value = D.dueDate;
 }
