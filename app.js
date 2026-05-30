@@ -1,6 +1,6 @@
 ﻿// ==================== DATA ====================
 const DATA_VERSION = 1;
-const STORAGE_KEY
+const STORAGE_KEY = 'pwa_mom_baby_data';
 
 // ==================== UTILITY ====================
 function debounce(fn, delay) {
@@ -9,7 +9,7 @@ function debounce(fn, delay) {
     clearTimeout(timer);
     timer = setTimeout(() => fn.apply(this, args), delay);
   };
-} = 'pwa_mom_baby_data';
+}
 
 function loadData(){
   const defaults = {
@@ -29,10 +29,26 @@ function loadData(){
     feedState: { left: {running:false,start:null,elapsed:0}, right: {running:false,start:null,elapsed:0} },
     kickState: { episodes:0, clicks:0, start:null, lastKickTime:0, window:3 }
   };
-    try {`n    const raw = localStorage.getItem(STORAGE_KEY);`n    if (raw) {`n      const parsed = JSON.parse(raw);`n      // Future: migrate older data versions here`n      return Object.assign({}, defaults, parsed);`n    }`n  } catch (e) {`n    console.warn("[Data] Failed to load, using defaults:", e);`n  }`n  return defaults;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Future: migrate older data versions here.
+      return Object.assign({}, defaults, parsed);
+    }
+  } catch (e) {
+    console.warn("[Data] Failed to load, using defaults:", e);
+  }
+  return defaults;
 }
 
-function saveData(data){`n  try {`n    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));`n  } catch (e) {`n    console.warn("[Data] Failed to save:", e);`n  }`n}
+function saveData(data){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn("[Data] Failed to save:", e);
+  }
+}
 
 let D = loadData();
 
@@ -476,12 +492,14 @@ function renderHospitalBag(){
 }
 
 function switchSubTab(sub, el){
-  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
+  const page = el.closest('.page') || document;
+  page.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  page.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('sub-'+sub).classList.add('active');
   if(sub === 'notes') renderNotes();
-  else renderHospitalBag();
+  else if(sub === 'bag') renderHospitalBag();
+  else if(sub === 'weight-chart') drawWeightChart();
 }
 
 // ==================== SETTINGS ====================
