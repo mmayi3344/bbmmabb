@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "bbmmabb-v1";
+﻿const CACHE_NAME = "bbmmabb-v2";
 const PRE_CACHE = [
   "./",
   "./index.html",
@@ -50,3 +50,4 @@ self.addEventListener("fetch", (e) => {
     })
   );
 });
+

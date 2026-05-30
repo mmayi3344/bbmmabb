@@ -4,8 +4,8 @@
   "description": "孕期记录 & 新生儿护理工具",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#FFF9F5",
-  "theme_color": "#FDF2F4",
+  "background_color": "#FFF5F6",
+  "theme_color": "#FFF5F6",
   "orientation": "portrait",
   "icons": [
     {
@@ -22,3 +22,4 @@
     }
   ]
 }
+
