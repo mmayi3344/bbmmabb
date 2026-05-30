@@ -394,6 +394,16 @@ label{font-size:.82rem;font-weight:600;color:var(--text-light);display:block;mar
   background:var(--primary-light);color:var(--primary-dark);
   font-size:.78rem;font-weight:700;
 }
+.family-box{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px;border-radius:var(--radius-xs);background:var(--bg);
+  border:1px solid var(--border);
+}
+.invite-code{
+  margin-top:2px;font-size:1rem;font-weight:800;color:var(--text);
+  font-variant-numeric:tabular-nums;letter-spacing:.06em;
+}
+.join-box{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
 
 /* Empty state */
 .empty{

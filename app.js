@@ -11,6 +11,42 @@ function debounce(fn, delay) {
   };
 }
 
+function generateId(prefix){
+  return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function generateInviteCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'BB';
+  for(let i = 0; i < 8; i++){
+    if(i === 4) code += '-';
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function normalizeData(data){
+  data.cloudConfig = Object.assign({ url: '', anonKey: '' }, data.cloudConfig || {});
+  data.syncStatus = Object.assign({
+    state: 'local',
+    message: '数据保存在当前设备',
+    lastSyncedAt: null
+  }, data.syncStatus || {});
+  data.familyName = data.familyName || '';
+  data.memberName = data.memberName || '';
+  data.inviteCode = data.inviteCode || '';
+  return data;
+}
+
+function withRecordMeta(record){
+  return Object.assign({
+    id: generateId('rec'),
+    familyId: D.syncMode === 'collab' ? D.familyId : null,
+    createdBy: D.memberName || '',
+    updatedAt: new Date().toISOString()
+  }, record);
+}
+
 function loadData(){
   const defaults = {
     appTitle: '孕宝助手',
@@ -29,7 +65,11 @@ function loadData(){
     syncMode: null,
     syncProvider: null,
     familyId: null,
+    familyName: '',
+    memberName: '',
+    inviteCode: '',
     cloudConfig: { url: '', anonKey: '' },
+    syncStatus: { state: 'local', message: '数据保存在当前设备', lastSyncedAt: null },
     feedState: { left: {running:false,start:null,elapsed:0}, right: {running:false,start:null,elapsed:0} },
     kickState: { episodes:0, clicks:0, start:null, lastKickTime:0, window:3 }
   };
@@ -38,12 +78,12 @@ function loadData(){
     if (raw) {
       const parsed = JSON.parse(raw);
       // Future: migrate older data versions here.
-      return Object.assign({}, defaults, parsed);
+      return normalizeData(Object.assign({}, defaults, parsed));
     }
   } catch (e) {
     console.warn("[Data] Failed to load, using defaults:", e);
   }
-  return defaults;
+  return normalizeData(defaults);
 }
 
 function saveData(data){
@@ -60,14 +100,90 @@ let D = loadData();
 function chooseMode(mode){
   D.syncMode = mode;
   D.syncProvider = mode === 'collab' ? 'supabase' : null;
-  if(mode === 'local'){
-    D.familyId = null;
-  } else if(!D.familyId){
-    D.familyId = 'family_' + Date.now().toString(36);
+  if(mode === 'collab'){
+    ensureFamilyProfile();
+    D.syncStatus = {
+      state: 'pending',
+      message: '家庭空间已准备，等待配置 Supabase 云同步',
+      lastSyncedAt: null
+    };
+  } else {
+    D.syncStatus = {
+      state: 'local',
+      message: '数据保存在当前设备',
+      lastSyncedAt: null
+    };
   }
   saveData(D);
   closeModeChooser();
   renderSyncMode();
+}
+
+function ensureFamilyProfile(){
+  if(!D.familyId) D.familyId = generateId('family');
+  if(!D.inviteCode) D.inviteCode = generateInviteCode();
+  if(!D.familyName) D.familyName = '我的家庭';
+}
+
+function saveFamilyProfile(){
+  const familyName = document.getElementById('familyNameInput');
+  const memberName = document.getElementById('memberNameInput');
+  if(familyName) D.familyName = familyName.value.trim() || '我的家庭';
+  if(memberName) D.memberName = memberName.value.trim();
+  ensureFamilyProfile();
+  saveData(D);
+  renderSyncMode();
+}
+
+function createFamilySpace(){
+  D.syncMode = 'collab';
+  D.syncProvider = 'supabase';
+  D.familyId = generateId('family');
+  D.inviteCode = generateInviteCode();
+  D.familyName = document.getElementById('familyNameInput')?.value.trim() || D.familyName || '我的家庭';
+  D.memberName = document.getElementById('memberNameInput')?.value.trim() || D.memberName;
+  D.syncStatus = {
+    state: 'pending',
+    message: '已创建家庭空间，配置云同步后可邀请另一位家长',
+    lastSyncedAt: null
+  };
+  saveData(D);
+  renderSyncMode();
+}
+
+function joinFamilyByCode(){
+  const input = document.getElementById('joinInviteInput');
+  const code = (input?.value || '').trim().toUpperCase();
+  if(!code) return;
+  D.syncMode = 'collab';
+  D.syncProvider = 'supabase';
+  D.familyId = 'joined_' + code.replace(/[^A-Z0-9]/g, '').toLowerCase();
+  D.inviteCode = code;
+  D.familyName = D.familyName || '共同家庭';
+  D.memberName = document.getElementById('memberNameInput')?.value.trim() || D.memberName;
+  D.syncStatus = {
+    state: 'pending',
+    message: '已记录邀请码，配置云同步后会加入对应家庭',
+    lastSyncedAt: null
+  };
+  if(input) input.value = '';
+  saveData(D);
+  renderSyncMode();
+}
+
+function copyInviteCode(){
+  ensureFamilyProfile();
+  saveData(D);
+  const code = D.inviteCode;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(() => {
+      D.syncStatus.message = '邀请码已复制，可以发给另一位家长';
+      saveData(D);
+      renderSyncMode();
+    }).catch(() => alert('邀请码：' + code));
+  } else {
+    alert('邀请码：' + code);
+  }
 }
 
 function openModeChooser(){
@@ -86,6 +202,11 @@ function renderSyncMode(){
   const badge = document.getElementById('settingsModeBadge');
   const help = document.getElementById('syncModeHelp');
   const cloud = document.getElementById('cloudSetup');
+  const familyName = document.getElementById('familyNameInput');
+  const memberName = document.getElementById('memberNameInput');
+  const invite = document.getElementById('inviteCodeView');
+  const familyId = document.getElementById('familyIdLabel');
+  const status = document.getElementById('syncStatusText');
 
   if(chip){
     chip.textContent = mode === 'collab' ? '家庭协同 · 待配置' : '本地模式';
@@ -103,6 +224,11 @@ function renderSyncMode(){
   if(cloud){
     cloud.style.display = mode === 'collab' ? 'block' : 'none';
   }
+  if(familyName) familyName.value = D.familyName || '';
+  if(memberName) memberName.value = D.memberName || '';
+  if(invite) invite.textContent = D.inviteCode || '尚未创建';
+  if(familyId) familyId.textContent = D.familyId ? D.familyId.slice(0, 18) : '未创建';
+  if(status) status.textContent = D.syncStatus?.message || (mode === 'collab' ? '等待配置云同步' : '数据保存在当前设备');
 }
 
 // ==================== DUE DATE ====================
@@ -192,12 +318,12 @@ function toggleFeed(side){
     // Stop
     state.running = false;
     const duration = Math.floor((Date.now() - state.start) / 1000);
-    D.feedSessions.unshift({
+    D.feedSessions.unshift(withRecordMeta({
       side,
       start: new Date(state.start).toISOString(),
       duration,
       time: new Date().toLocaleString('zh-CN')
-    });
+    }));
     state.elapsed = 0;
     state.start = null;
     if(D.feedSessions.length > 50) D.feedSessions.length = 50;
@@ -288,7 +414,7 @@ function endKickSession(){
   }
   const now = Date.now();
   const duration = Math.floor((now - D.kickState.start) / 1000);
-  D.kickLog.unshift({
+  D.kickLog.unshift(withRecordMeta({
     date: new Date().toLocaleDateString('zh-CN'),
     startTime: new Date(D.kickState.start).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
     endTime: new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
@@ -296,7 +422,7 @@ function endKickSession(){
     clicks: D.kickState.clicks,
     duration: duration,
     window: D.kickState.window
-  });
+  }));
   if(D.kickLog.length > 100) D.kickLog.length = 100;
   resetKickCounter();
   saveData(D);
@@ -346,7 +472,7 @@ function clearKickHistory(){D.kickLog=[];saveData(D);renderPregnancy();}
 function logPregWeight(){
   const w = parseFloat(document.getElementById('pregWeight').value);
   if(!w || w <= 0) return;
-  D.pregWeights.unshift({date:new Date().toLocaleDateString('zh-CN'), weight:w});
+  D.pregWeights.unshift(withRecordMeta({date:new Date().toLocaleDateString('zh-CN'), weight:w}));
   if(D.pregWeights.length > 100) D.pregWeights.length = 100;
   saveData(D);
   document.getElementById('pregWeight').value = '';
@@ -358,7 +484,7 @@ function addApt(){
   const name = document.getElementById('aptName').value.trim();
   const date = document.getElementById('aptDate').value;
   if(!name || !date) return;
-  D.appointments.unshift({name, date, done:false});
+  D.appointments.unshift(withRecordMeta({name, date, done:false}));
   D.appointments.sort((a,b) => a.date.localeCompare(b.date));
   saveData(D);
   document.getElementById('aptName').value = '';
@@ -368,12 +494,13 @@ function addApt(){
 
 function toggleApt(idx){
   D.appointments[idx].done = !D.appointments[idx].done;
+  D.appointments[idx].updatedAt = new Date().toISOString();
   saveData(D);
   renderPregnancy();
 }
 
 function logDiaper(type){
-  D.diapers.unshift({time:new Date().toLocaleString('zh-CN'), type});
+  D.diapers.unshift(withRecordMeta({time:new Date().toLocaleString('zh-CN'), type}));
   if(D.diapers.length > 100) D.diapers.length = 100;
   saveData(D);
   renderBaby();
@@ -384,7 +511,7 @@ function logGrowth(){
   const h = parseFloat(document.getElementById('babyHeight').value);
   const d = document.getElementById('growthDate').value || new Date().toISOString().split('T')[0];
   if(!w && !h) return;
-  D.growth.unshift({date:d, weight:w||null, height:h||null});
+  D.growth.unshift(withRecordMeta({date:d, weight:w||null, height:h||null}));
   D.growth.sort((a,b) => b.date.localeCompare(a.date));
   if(D.growth.length > 100) D.growth.length = 100;
   saveData(D);
@@ -396,7 +523,7 @@ function logGrowth(){
 function logSleep(){
   const h = parseFloat(document.getElementById('sleepHours').value);
   if(!h || h <= 0) return;
-  D.sleep.unshift({date:new Date().toLocaleDateString('zh-CN'), hours:h});
+  D.sleep.unshift(withRecordMeta({date:new Date().toLocaleDateString('zh-CN'), hours:h}));
   if(D.sleep.length > 100) D.sleep.length = 100;
   saveData(D);
   document.getElementById('sleepHours').value = '';
@@ -406,7 +533,7 @@ function logSleep(){
 function addNote(){
   const text = document.getElementById('noteInput').value.trim();
   if(!text) return;
-  D.notes.unshift({time:new Date().toLocaleString('zh-CN'), text});
+  D.notes.unshift(withRecordMeta({time:new Date().toLocaleString('zh-CN'), text}));
   if(D.notes.length > 200) D.notes.length = 200;
   saveData(D);
   document.getElementById('noteInput').value = '';
@@ -417,8 +544,9 @@ function toggleVaccine(id){
   const idx = D.vaccines.findIndex(v => v.id === id);
   if(idx >= 0){
     D.vaccines[idx].done = !D.vaccines[idx].done;
+    D.vaccines[idx].updatedAt = new Date().toISOString();
   } else {
-    D.vaccines.push({id, done:true});
+    D.vaccines.push(withRecordMeta({id, done:true}));
   }
   saveData(D);
   renderVaccine();
@@ -435,11 +563,14 @@ function addCheckupRecord(){
   const file = fileInput.files[0];
 
   function saveRecord(record){
+    const nextRecord = _editingCheckupIdx >= 0
+      ? Object.assign({}, D.checkupRecords[_editingCheckupIdx], record, { updatedAt: new Date().toISOString() })
+      : withRecordMeta(record);
     if(_editingCheckupIdx >= 0){
-      D.checkupRecords[_editingCheckupIdx] = record;
+      D.checkupRecords[_editingCheckupIdx] = nextRecord;
       cancelCheckupEdit();
     } else {
-      D.checkupRecords.unshift(record);
+      D.checkupRecords.unshift(nextRecord);
       if(D.checkupRecords.length > 50) D.checkupRecords.length = 50;
     }
     saveData(D);
@@ -505,7 +636,7 @@ function addBagItem(){
   const qty = parseInt(document.getElementById('bagItemQty').value) || 1;
   const price = parseFloat(document.getElementById('bagItemPrice').value) || 0;
   if(!name) return;
-  D.hospitalBag.push({name, qty, price});
+  D.hospitalBag.push(withRecordMeta({name, qty, price}));
   if(D.hospitalBag.length > 200) D.hospitalBag.length = 200;
   saveData(D);
   document.getElementById('bagItemName').value = '';
